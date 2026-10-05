@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The bandit analogy and why it explains LLM training. Part 4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']],
+  packages:{'[+]':['color']},
+  macros:{rw:['{\\color{cRw}{#1}}',1],bs:['{\\color{cBs}{#1}}',1],sg:['{\\color{cSg}{#1}}',1],
+          gp:['{\\color{cGp}{#1}}',1],E:'\\mathbb{E}'}},
+  loader:{load:['[tex]/color']},
+  svg:{fontCache:'global'},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code','svg']}};
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+:root{
+  --bg:#FAFBFD;--panel:#FFFFFF;--wash:#F0F3F8;--ink:#18212F;--ink2:#465166;--ink3:#788396;--line:#DBE1EA;
+  --reward:#B57A00;--base:#2B6BE0;--pos:#12855D;--neg:#CC3D64;--grpo:#7448D4;--dr:#0B8498;
+  --sans:"Schibsted Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --serif:"Literata",Georgia,"Times New Roman",serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--serif);font-size:18px;line-height:1.72}
+main{padding:0 1.25rem 5rem}
+main>*{max-width:41rem;margin-left:auto;margin-right:auto}
+main>figure,main>.wide{max-width:54rem}
+
+.series{display:flex;gap:.4rem;flex-wrap:wrap;max-width:54rem;margin:0 auto;padding:1.1rem 1.25rem;font-family:var(--sans);font-size:.83rem}
+.series a{flex:1 1 11rem;text-decoration:none;color:var(--ink2);padding:.55rem .8rem;border:1px solid var(--line);border-radius:10px;background:var(--panel);line-height:1.3}
+.series a b{display:block;color:var(--ink3);font-weight:500;font-size:.76rem}
+.series a[aria-current]{border-color:var(--ink);color:var(--ink);box-shadow:inset 0 -3px 0 var(--ink)}
+.series a:hover{border-color:var(--ink3)}
+
+.hero{padding:3.2rem 0 1rem}
+h1{font-family:var(--sans);font-weight:700;font-size:clamp(2.1rem,6vw,3.5rem);line-height:1.04;letter-spacing:-.03em;margin:0 0 1.2rem;text-wrap:balance}
+.lede{font-size:1.22rem;line-height:1.55;color:var(--ink2);margin:0}
+h2{font-family:var(--sans);font-weight:700;font-size:1.65rem;line-height:1.18;letter-spacing:-.018em;margin:4.5rem auto 1rem;display:flex;gap:.75rem;align-items:baseline;text-wrap:balance}
+h2 .n{flex:none;font-size:.95rem;font-weight:600;color:var(--bg);background:var(--ink);width:1.75rem;height:1.75rem;border-radius:50%;display:inline-grid;place-items:center;transform:translateY(-.15rem)}
+h3{font-family:var(--sans);font-weight:650;font-size:1.1rem;margin:2.4rem auto .4rem;letter-spacing:-.005em}
+p{margin:1rem auto}
+a{color:var(--base)}
+strong{font-weight:650}
+.q{font-size:1.18rem;line-height:1.5;border-left:3px solid var(--ink);padding:.1rem 0 .1rem 1.1rem;margin:1.8rem auto;font-style:italic}
+
+/* colour is vocabulary: each quantity keeps one colour in prose, maths and figures */
+.w{font-family:var(--sans);font-weight:650;font-size:.94em;white-space:nowrap}
+.w.reward{color:var(--reward)}.w.base{color:var(--base)}.w.pos{color:var(--pos)}.w.neg{color:var(--neg)}
+.w.grpo{color:var(--grpo)}.w.dr{color:var(--dr)}
+.legend{display:flex;flex-wrap:wrap;gap:.5rem 1.4rem;font-family:var(--sans);font-size:.86rem;color:var(--ink2);margin:1.6rem auto 0;padding:.9rem 0 0;border-top:1px solid var(--line)}
+.legend i{display:inline-block;width:.75rem;height:.75rem;border-radius:3px;margin-right:.4rem;vertical-align:-.05rem}
+
+.wordeq{font-family:var(--sans);font-weight:650;font-size:clamp(1.05rem,3.4vw,1.5rem);text-align:center;margin:2rem auto;line-height:1.5}
+.wordeq span{white-space:nowrap}
+.math{overflow-x:auto;overflow-y:hidden;margin:1.4rem auto;padding:.2rem 0}
+
+figure{margin:2.2rem auto;padding:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1.1rem 1.1rem .9rem}
+.panel>svg{display:block;width:100%;height:auto}
+figcaption{font-family:var(--sans);font-size:.86rem;line-height:1.5;color:var(--ink2);margin:.75rem auto 0;max-width:41rem}
+.ctl{display:flex;flex-wrap:wrap;gap:.6rem 1.2rem;align-items:center;font-family:var(--sans);font-size:.86rem;color:var(--ink2);margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--line)}
+.ctl label{display:flex;gap:.55rem;align-items:center}
+.ctl output,.read{font-variant-numeric:tabular-nums;color:var(--ink);font-weight:600}
+.read{font-family:var(--sans);font-size:.92rem;font-weight:500;margin:.7rem 0 0;min-height:2.8em;line-height:1.45}
+input[type=range]{accent-color:var(--ink);width:9.5rem;max-width:42vw}
+button{font-family:var(--sans);font-size:.86rem;font-weight:600;color:var(--ink);background:var(--panel);border:1px solid var(--ink3);border-radius:8px;padding:.42rem .85rem;cursor:pointer}
+button:hover{border-color:var(--ink)}
+button.go{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.seg{display:inline-flex;border:1px solid var(--ink3);border-radius:8px;overflow:hidden}
+.seg button{border:0;border-radius:0;border-left:1px solid var(--line)}
+.seg button:first-child{border-left:0}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+button:focus-visible,input:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--base);outline-offset:2px}
+svg text{font-family:var(--sans);fill:var(--ink2);font-size:13px}
+svg .num{font-variant-numeric:tabular-nums}
+
+.take{background:var(--wash);border-radius:14px;padding:1.1rem 1.3rem 1.2rem;margin:2.4rem auto}
+.take h3{margin:0 0 .3rem;font-size:.84rem;color:var(--ink3);font-weight:600}
+.take p+p{margin-top:.7rem}
+.take p{margin:.3rem 0 0;font-family:var(--sans);font-size:1.06rem;line-height:1.5;font-weight:500}
+details.deep{border:1px solid var(--line);border-radius:12px;background:var(--panel);margin:1.8rem auto;font-size:.95rem}
+details.deep summary{cursor:pointer;font-family:var(--sans);font-weight:600;font-size:.92rem;padding:.8rem 1.1rem;list-style:none;display:flex;gap:.6rem;align-items:center}
+details.deep summary::-webkit-details-marker{display:none}
+details.deep summary::before{content:"+";font-size:1.2rem;line-height:1;width:1rem;color:var(--ink3)}
+details.deep[open] summary::before{content:"–"}
+details.deep summary small{font-weight:500;color:var(--ink3);font-size:.86rem}
+details.deep .in{padding:0 1.1rem 1rem;border-top:1px solid var(--line)}
+
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-family:var(--sans);font-size:.9rem;line-height:1.45;min-width:34rem}
+th,td{text-align:left;vertical-align:top;padding:.7rem .8rem;border-bottom:1px solid var(--line)}
+thead th{font-weight:650;border-bottom:2px solid var(--ink)}
+tbody th{font-weight:600;color:var(--ink2);width:24%}
+.chip{display:inline-block;font-family:var(--sans);font-size:.76rem;font-weight:650;padding:.12rem .55rem;border-radius:99px;border:1.5px solid currentColor;white-space:nowrap}
+.chip.ok{color:var(--pos)}.chip.mid{color:var(--reward)}.chip.no{color:var(--neg)}
+
+.check{list-style:none;padding:0;margin:0;font-family:var(--sans)}
+.check li{display:grid;grid-template-columns:8.2rem 6.2rem 1fr;gap:.4rem 1rem;padding:.85rem 0;border-bottom:1px solid var(--line);font-size:.92rem;line-height:1.5;align-items:start}
+.check li:last-child{border-bottom:0}
+.check li b{font-weight:650}
+.check li span.why{color:var(--ink2)}
+@media(max-width:640px){.check li{grid-template-columns:1fr auto}.check li span.why{grid-column:1/-1}}
+
+.final{display:grid;gap:.9rem;margin:2rem auto}
+.final div{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:1rem 1.2rem}
+.final h3{margin:0 0 .3rem;font-size:1rem}
+.final p{margin:0;font-size:.98rem}
+.next{display:block;max-width:41rem;margin:3.5rem auto 0;padding:1.1rem 1.3rem;border-radius:14px;background:var(--ink);color:var(--bg);text-decoration:none;font-family:var(--sans)}
+.next small{display:block;opacity:.7;font-size:.82rem}
+.next b{font-size:1.15rem}
+footer{max-width:41rem;margin:2.5rem auto 0;font-family:var(--sans);font-size:.8rem;color:var(--ink3)}
+@media(max-width:560px){body{font-size:17px}.panel{padding:.7rem .6rem}h2{font-size:1.4rem}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media(max-width:680px){.panel{overflow-x:auto}.panel>svg{min-width:640px}}
+
+.prompt{font-family:var(--sans);font-weight:650;font-size:1.05rem;padding:.2rem 0 .8rem}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(10.5rem,1fr));gap:.7rem}
+.card{border:1.5px solid var(--line);border-radius:12px;padding:.8rem .9rem;font-family:var(--sans);font-size:.95rem;line-height:1.4;display:flex;flex-direction:column;gap:.5rem;min-height:7.5rem}
+.card .mark{font-weight:650;font-size:.84rem}
+.card.ok .mark{color:var(--pos)}.card.bad .mark{color:var(--neg)}
+.card .act{margin-top:auto;font-weight:650;font-size:.88rem;visibility:hidden}
+.cards.shown .card .act{visibility:visible}
+.cards.shown .card.ok{border-color:var(--pos)}.cards.shown .card.bad{border-color:var(--neg)}
+.cards.shown .card.ok .act{color:var(--pos)}.cards.shown .card.bad .act{color:var(--neg)}
+
+</style>
+</head>
+<body>
+<nav class="series" aria-label="The three parts of this tutorial">
+<a href="section1.html"><b>Part 1</b>Why must the baseline go to zero?</a>
+<a href="section2.html"><b>Part 2</b>Are these really RL algorithms?</a>
+<a href="section3.html"><b>Part 3</b>Do they work on classic RL problems?</a>
+<a href="section4.html" aria-current="page"><b>Part 4</b>A simpler mental model</a>
+</nav>
+<main>
+<span style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">\(\definecolor{cRw}{RGB}{181,122,0}\definecolor{cBs}{RGB}{43,107,224}\definecolor{cSg}{RGB}{18,133,93}\definecolor{cGp}{RGB}{116,72,212}\)</span>
+<header class="hero">
+  <h1>The bandit analogy, and why it explains LLM training</h1>
+  <p class="lede">There is a much older and much simpler problem than reinforcement learning hiding inside GRPO. Once you see it, the algorithm stops looking like a trimmed-down version of something bigger and starts looking like the obvious thing to do.</p>
+</header>
+
+<h2 id="puzzle"><span class="n">1</span>A puzzle</h2>
+
+<p>A model is asked the same question four times and gives four different answers. A judge scores each one from 0 to 10.</p>
+
+<figure>
+  <div class="panel">
+    <div class="prompt">Prompt: In one sentence, why is the sky blue?</div>
+    <div class="cards" id="h1"></div>
+    <p class="read" id="h1r">How should the model change, and by how much for each answer? Decide for yourself, then press the button.</p>
+    <div class="ctl"><button class="go" id="h1go">Show what a sensible learner does</button></div>
+  </div>
+</figure>
+
+<p>You probably did three things without thinking about them. You compared the answers <em>to each other</em>: a 7 is good here only because the group averaged 5.5. You treated each answer as one whole thing that was either worth repeating or not. And you never asked what happens <em>after</em> the answer, because nothing does. The question was asked, an answer was given, a score came back, and that was the end.</p>
+
+<div class="take"><h3>Takeaway</h3><p>One situation, several complete attempts, one score each. Learning means shifting probability towards each attempt in proportion to how far it beat the group average.</p></div>
+
+<h2 id="bandit"><span class="n">2</span>The same puzzle, in a casino</h2>
+
+<p>This puzzle has a name that is about seventy years old. Picture a row of slot machines. Each pays out a different amount on average, with some randomness on top. You pull one lever, you see one payout, and the round is over. Your only job is to work out which lever to favour.</p>
+<p>Slot machines used to be called one-armed bandits, so this is the <strong>bandit problem</strong>. Each lever is an <strong>arm</strong>.</p>
+<p>Now put machines in two rooms, with different payouts in each. Before choosing, you are told which room you are in. That piece of information is the <strong>context</strong>, and this version is a <strong>contextual bandit</strong>. Let the learner below play.</p>
+
+<figure>
+  <div class="panel">
+    <svg id="h2" viewBox="0 0 760 310" role="img" aria-label="Three slot machines with the learner's current preference for each"></svg>
+    <p class="read" id="h2r"></p>
+    <div class="ctl">
+      <div class="seg" id="h2seg"><button data-v="0" aria-pressed="true">Room A</button><button data-v="1" aria-pressed="false">Room B</button></div>
+      <button class="go" id="h2one">Play one round</button><button id="h2many">Play 50 rounds</button><button id="h2reset">Start over</button>
+    </div>
+  </div>
+  <figcaption>The bar above each machine is the policy \(\pi(a\mid x)\): the probability of pulling arm \(a\) in room \(x\). Payouts range from 0 to 10. After every pull the learner compares the payout \(r\) with \(\bar r_x\), its average payout so far in this room, and applies the update below. The true average payouts stay hidden until 50 rounds have been played in a room.</figcaption>
+</figure>
+
+<p>The learner keeps a preference \(H_x(a)\) for each arm in each room, and \(\pi(a\mid x)\propto e^{H_x(a)}\). After pulling arm \(a\) and receiving \(r\), it updates every arm \(k\) in that room:</p>
+
+<div class="math">\[ H_x(k) \;\leftarrow\; H_x(k) + \alpha\,\big(r-\bar r_x\big)\,\big(\mathbb{1}[k=a]-\pi(k\mid x)\big) \]</div>
+
+<p>The last bracket is \(\partial\log\pi(a\mid x)/\partial H_x(k)\). So this is \(H\leftarrow H+\alpha\,(r-b)\,\nabla\log\pi(a\mid x)\) with baseline \(b=\bar r_x\): a reward minus a baseline, times the direction that makes the chosen arm more likely. It is the same update rule as in part 1.</p>
+
+<p>Four ingredients, and no others:</p>
+<p><strong>Context.</strong> What you are shown before choosing. <strong>Action.</strong> The one arm you pull. <strong>Reward.</strong> The one payout you get. <strong>Policy.</strong> Your rule for choosing an arm in each context, improved a little after every reward.</p>
+<p>What is missing matters as much. Pulling a lever does not change the room. It does not change which room you see next. No choice has consequences beyond its own payout.</p>
+
+<p>Written as an objective, a contextual bandit maximises</p>
+
+<div class="math">\[ J(\theta) \;=\; \E_{x}\;\E_{a\sim\pi_\theta(\cdot\mid x)}\big[\,r(x,a)\,\big] \]</div>
+
+<p>with value \(V(x)=\E_{a\sim\pi}[r(x,a)]\) and advantage \(A(x,a)=r(x,a)-V(x)\). There is no sum over time anywhere in it.</p>
+
+<div class="take"><h3>Takeaway</h3><p>A contextual bandit is: see a context \(x\), make one choice \(a\), get one reward \(r(x,a)\), done. The policy improves by weighting each choice by \(r-V(x)\), the reward minus what is usual for that context.</p></div>
+
+<h2 id="map"><span class="n">3</span>Mapping the casino onto a language model</h2>
+
+<figure>
+  <div class="panel">
+    <svg id="h3" viewBox="0 0 760 330" role="img" aria-label="Each bandit concept matched to its counterpart in language model training"></svg>
+    <div class="ctl"><button id="h3go">Replay the mapping</button></div>
+  </div>
+</figure>
+
+<p>Every piece has a counterpart. The prompt is the context. A complete generated response is one arm. The verifier's or judge's score is the payout. The language model is the policy. Substitute the names into the bandit objective and you get the objective of single-turn language-model training, symbol for symbol:</p>
+
+<div class="math">\[ \underbrace{\E_{x}\,\E_{a\sim\pi_\theta(\cdot\mid x)}\big[r(x,a)\big]}_{\text{contextual bandit}} \qquad\longleftrightarrow\qquad \underbrace{\E_{q}\,\E_{o\sim\pi_\theta(\cdot\mid q)}\big[r(q,o)\big]}_{\text{graded response generation}} \]</div>
+
+<p>So for this setting the word "analogy" undersells it. The response is produced token by token, but \(\pi_\theta(o\mid q)=\prod_t\pi_\theta(o_t\mid q,o_{&lt;t})\) is still one probability for one choice, and its gradient is the sum of the token-level gradients. The tokens are the internal structure of pulling one lever.</p>
+<p>Two things are different, and both shape the algorithm.</p>
+<p><strong>The number of arms is beyond counting.</strong> A room has three levers. A prompt has more possible responses than there are atoms in the universe. No learner can try each arm and keep a tally, so the policy has to generalise: reinforcing one response must also raise the chances of similar ones. A language model does this naturally, since all responses come from the same weights.</p>
+<p><strong>You can pull many arms in the same round.</strong> In a casino you pull one lever and the round is gone. With a model you can hand it the identical prompt eight times and get eight responses. That is the opening GRPO uses.</p>
+
+<div class="take"><h3>Takeaway</h3><p>Prompt, response, score and model line up with context, arm, reward and policy. The differences are an astronomically large set of arms and the freedom to sample several of them per context.</p></div>
+
+<h2 id="fit"><span class="n">4</span>Why GRPO fits naturally</h2>
+
+<p>The casino learner had to keep a running average for each room, built up over many visits. A prompt may be seen only once in training, so there is no history to average. GRPO builds the average on the spot instead. Step through it.</p>
+
+<figure>
+  <div class="panel">
+    <svg id="h4" viewBox="0 0 760 330" role="img" aria-label="The four stages of a GRPO update on six responses to one prompt"></svg>
+    <p class="read" id="h4r"></p>
+    <div class="ctl">
+      <div class="seg" id="h4seg"><button data-v="1" aria-pressed="false">1 Generate</button><button data-v="2" aria-pressed="false">2 Score</button><button data-v="3" aria-pressed="false">3 Compare</button><button data-v="4" aria-pressed="true">4 Update</button></div>
+      <button class="go" id="h4play">Play all four</button>
+      <label><input type="checkbox" id="h4sd"> Divide by σ (GRPO)</label>
+    </div>
+  </div>
+</figure>
+
+<p><strong>Generate.</strong> Sample \(o_1,\dots,o_G\sim\pi_\theta(\cdot\mid q)\): several arms pulled in the same context.</p>
+<p><strong>Score.</strong> Each response gets its payout \(r_i=r(q,o_i)\).</p>
+<p><strong>Compare.</strong> The group mean \(\bar r=\frac1G\sum_j r_j\) is a sample estimate of \(V(q)\), "what is usual for this context". So \(r_i-\bar r\) is a sample estimate of the bandit <strong>advantage</strong> \(A(q,o_i)=r(q,o_i)-V(q)\): how much better response \(i\) did than its siblings. Because everything is measured against the group, what matters is the ranking and the gaps within it, not the raw scores. A hard prompt where 0.3 is the best anyone managed still produces a clear winner.</p>
+<p><strong>Update.</strong> \(\theta\leftarrow\theta+\alpha\,\frac1G\sum_i (r_i-\bar r)\,\nabla\log\pi_\theta(o_i\mid q)\). Responses with a positive advantage are made more likely, the others less. Compare this with the casino update: it is the same rule, with \(\bar r\) computed from the group in place of the running average.</p>
+<p>The tick-box shows the one place the two variants differ at this level. GRPO divides the advantages by the group's standard deviation \(\sigma\), giving \((r_i-\bar r)/\sigma\), so that every prompt produces weights of similar size. Dr. GRPO leaves them as they are. Part 1 looks at what that division costs.</p>
+
+<div class="take"><h3>Takeaway</h3><p>GRPO is the casino learner's rule with one change: it gets its "usual payout" by sampling a group right now, not from memory. "Group relative" is a literal description.</p></div>
+
+<h2 id="full"><span class="n">5</span>Why full RL may be unnecessary</h2>
+
+<p>Reinforcement learning in its full form is for problems where choices have consequences that unfold. A simple test separates the two kinds of problem: between the first choice and the final score, how many times does the world answer back?</p>
+
+<figure>
+  <div class="panel">
+    <svg id="h5" viewBox="0 0 760 320" role="img" aria-label="Timelines of a chess game, a walking robot and a language model response"></svg>
+    <div class="ctl"><button class="go" id="h5go">Play the three episodes</button></div>
+  </div>
+  <figcaption>Dark marks are the learner's choices. Amber marks are the world answering back: an opponent's move, the physics of a step, or a grader's score.</figcaption>
+</figure>
+
+<p>In chess, every move is answered by an opponent, and a blunder on move 9 may only cost the game on move 40. A walking robot is answered by physics a thousand times a minute. Both need machinery for tracing a late result back to an early choice.</p>
+<p>A model writing one response is answered once, at the end. From the world's side, the whole response is a single choice. In symbols, the probability of a full episode in general RL is</p>
+
+<div class="math">\[ p_\theta(\text{episode}) \;=\; \prod_t \underbrace{\pi_\theta(a_t\mid s_t)}_{\text{learner}}\;\underbrace{P(s_{t+1}\mid s_t,a_t)}_{\text{world}} \]</div>
+
+<p>In chess and robotics the \(P\) factors are an opponent and physics, and they sit between the learner's choices. For a single response every \(P\) factor equals 1, because the next state is just the text so far. What remains is \(\prod_t\pi_\theta(o_t\mid q,o_{&lt;t})=\pi_\theta(o\mid q)\): one draw from the policy. The sequential problem and the bandit problem are then the same problem.</p>
+
+<div class="take"><h3>Takeaway</h3><p>Much of language-model training has the shape of a contextual bandit: one context, one elaborate choice, one reward. A bandit-shaped problem only needs a bandit-shaped algorithm.</p></div>
+
+<h2 id="limits"><span class="n">6</span>Where the analogy fails</h2>
+
+<p>The analogy rests on one condition: the world stays quiet until the end. Drag the slider to break it.</p>
+
+<figure>
+  <div class="panel">
+    <svg id="h6" viewBox="0 0 760 140" role="img" aria-label="An episode with a varying number of interruptions from the world"></svg>
+    <p class="read" id="h6r"></p>
+    <div class="ctl"><label>Times the world answers back mid-episode <input type="range" id="h6k" min="0" max="12" value="0"><output id="h6ko">0</output></label></div>
+  </div>
+  <figcaption>Dark segments are text the model writes. Amber segments come from outside: a tool result, a user's reply, a web page. One score still arrives at the end.</figcaption>
+</figure>
+
+<p><strong>Tool use.</strong> When a model calls a search engine or runs code, the result is not something it wrote. Its next choice depends on what came back. That is a state the world controls.</p>
+<p><strong>Multi-turn agents.</strong> A user's reply depends on what the model said. An early clumsy turn can sink a conversation ten turns later. This is the chess problem again.</p>
+<p><strong>Persistent memory.</strong> If what a model does today changes what it is shown tomorrow, contexts are no longer independent draws. The casino assumption that pulling a lever never changes the room is false.</p>
+<p><strong>Long-horizon reasoning.</strong> Even with a silent world, a response of fifty thousand tokens is a strain on "one arm". One number has to explain an enormous number of internal decisions, and the comparison within a group becomes very noisy.</p>
+<p>In all four cases the \(P(s_{t+1}\mid s_t,a_t)\) factors are no longer 1, or the reward no longer depends on one choice. The estimator \(\frac1G\sum_i(r_i-\bar r)\sum_t\nabla\log\pi_\theta(a_{i,t}\mid s_{i,t})\) is still an unbiased policy gradient, with \(\bar r\) as a baseline for the starting state. But \(r_i-\bar r\) is no longer the advantage of any single choice. It is one number for the whole episode, and it now also contains the luck of what the world sent back.</p>
+<p>In practice GRPO-style training is still applied in these settings, by treating the entire episode as a single arm. That is an approximation, and a rougher one as the number of interruptions grows. This is where critics, per-step credit and the rest of the RL toolkit come back in.</p>
+
+<div class="take"><h3>Takeaway</h3><p>The bandit picture holds while an episode is one uninterrupted act followed by one score. Each time the world answers back mid-episode, it holds a little less.</p></div>
+
+<h2 id="summary"><span class="n">7</span>The whole story in one line</h2>
+
+<figure>
+  <div class="panel">
+    <svg id="h7" viewBox="0 0 760 250" role="img" aria-label="From traditional reinforcement learning to contextual bandits to GRPO to language model training"></svg>
+    <div class="ctl"><button id="h7go">Replay</button></div>
+  </div>
+</figure>
+
+<div class="final">
+  <div><h3>Why GRPO resembles a contextual-bandit algorithm</h3><p>It sees a context (the prompt), pulls several arms (responses), reads one payout each (scores), and shifts its policy towards the arms that beat the group average. Nothing in it tracks what happens after an arm is pulled.</p></div>
+  <div><h3>Why this helps explain its success</h3><p>Graded text generation is a bandit-shaped problem. The parts of RL that GRPO leaves out are the parts built for consequences over time, and here there are few.</p></div>
+  <div><h3>Where the analogy begins to fail</h3><p>As soon as the world answers back before the final score: tools, multi-turn dialogue, memory, very long reasoning. The more of that there is, the more a single number per episode has to explain.</p></div>
+</div>
+
+<a class="next" href="section1.html"><small>Back to part 1</small><b>Why must the baseline's expectation go to zero?</b></a>
+
+<footer>Parts 1 to 3 cover the bias analysis, the reinforcement-learning checklist, and classic RL problems. All figures compute their numbers in the page.</footer>
+
+</main>
+<script>
+const NS='http://www.w3.org/2000/svg';
+const $=id=>document.getElementById(id);
+const C={ink:'#18212F',ink2:'#465166',ink3:'#788396',line:'#DBE1EA',wash:'#F0F3F8',panel:'#FFFFFF',
+  reward:'#B57A00',base:'#2B6BE0',pos:'#12855D',neg:'#CC3D64',grpo:'#7448D4',dr:'#0B8498'};
+const REDUCE=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function S(tag,attrs,parent,text){const e=document.createElementNS(NS,tag);
+  for(const k in attrs)e.setAttribute(k,attrs[k]);if(text!==undefined)e.textContent=text;if(parent)parent.appendChild(e);return e;}
+function wipe(svg){while(svg.lastChild)svg.removeChild(svg.lastChild);}
+const fmt=(v,d=2)=>(v>=0?'+':'−')+Math.abs(v).toFixed(d);
+function seg(id,cb){const box=$(id);box.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+  box.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));cb(b.dataset.v);}));}
+/* run fn(t in 0..1) over ms; instantly if the reader prefers reduced motion */
+function tween(ms,fn,done){if(REDUCE){fn(1);done&&done();return;}
+  const t0=performance.now();(function f(now){const t=Math.min(1,(now-t0)/ms);fn(t);t<1?requestAnimationFrame(f):(done&&done());})(t0);}
+const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+
+function onceVisible(el,fn){if(REDUCE||!('IntersectionObserver' in window))return;
+  const io=new IntersectionObserver(es=>{if(es[0].isIntersecting){io.disconnect();fn();}},{threshold:.6});io.observe(el);}
+
+/* ---------- Figure 1: the puzzle ---------- */
+(function(){
+  const A=[['Air molecules scatter short blue wavelengths of sunlight far more than red ones, so blue reaches us from every direction.',9],
+    ['Because the sky reflects the colour of the ocean.',2],
+    ['Sunlight is scattered by the atmosphere, and blue is scattered the most.',7],
+    ['Blue light is the brightest colour in sunlight.',4]],box=$('h1'),mean=A.reduce((s,a)=>s+a[1],0)/4;
+  A.forEach(([t,r])=>{const d=document.createElement('div'),a=r-mean;d.className='card '+(a>0?'ok':'bad');
+    d.innerHTML='<span>'+t+'</span><span class="mark" style="color:var(--reward)">Score '+r+' / 10</span><span class="act">'+r+' − '+mean+' = '+fmt(a,1)+(a>0?'<br>↑ more likely':'<br>↓ less likely')+(Math.abs(a)>2?', strongly':', slightly')+'</span>';box.appendChild(d);});
+  $('h1go').addEventListener('click',()=>{box.classList.add('shown');
+    $('h1r').textContent='The group average is '+mean+'. Each answer is pushed by its score minus that average: +3.5, −3.5, +1.5, −1.5. The pushes sum to zero, and their sizes follow how far each answer stood from the group.';});
+})();
+
+/* ---------- Figure 2: a contextual bandit learner ---------- */
+(function(){
+  const svg=$('h2'),TRUE=[[2,5,8],[8,3,5]];let room=0,st,run=0;
+  const fresh=()=>({H:[0,0,0],avg:5,n:0,pulls:[0,0,0],last:-1,r:0});
+  function reset(){st=[fresh(),fresh()];}
+  const pol=H=>{const e=H.map(Math.exp),z=e[0]+e[1]+e[2];return e.map(v=>v/z);};
+  function round(){const s=st[room],p=pol(s.H);let u=Math.random(),a=0;while(a<2&&u>p[a]){u-=p[a];a++;}
+    const r=Math.round(Math.min(10,Math.max(0,TRUE[room][a]+(Math.random()*4-2)))*10)/10,b=s.avg,d=r-b;
+    for(let k=0;k<3;k++)s.H[k]+=.1*d*((k===a?1:0)-p[k]);
+    s.n++;s.avg+= (r-s.avg)/(s.n+1);s.pulls[a]++;s.last=a;s.r=r;return {a,r,b};}
+  function draw(){
+    wipe(svg);const s=st[room],p=pol(s.H);
+    S('text',{x:24,y:18,style:'font-weight:650;fill:'+C.ink},svg,'Context: Room '+'AB'[room]);
+    S('text',{x:736,y:18,'text-anchor':'end',class:'num'},svg,s.n+' rounds played here, r̄ = '+s.avg.toFixed(2));
+    for(let i=0;i<3;i++){const cx=150+i*230,on=s.last===i;
+      S('rect',{x:cx-60,y:48,width:120,height:70,rx:6,fill:C.wash},svg);
+      S('rect',{x:cx-60,y:48+70*(1-p[i]),width:120,height:70*p[i],rx:6,fill:C.base},svg);
+      S('text',{x:cx,y:42,'text-anchor':'middle',class:'num',style:'font-weight:650;fill:'+C.base},svg,'π = '+Math.round(p[i]*100)+'%');
+      S('rect',{x:cx-48,y:138,width:96,height:112,rx:14,fill:C.panel,stroke:on?C.ink:C.ink3,'stroke-width':on?3:1.5},svg);
+      S('rect',{x:cx-32,y:154,width:64,height:40,rx:6,fill:on?C.reward:C.wash,stroke:C.line},svg);
+      S('text',{x:cx,y:181,'text-anchor':'middle',class:'num',style:'font-weight:700;font-size:18px;fill:#fff'},svg,on?s.r.toFixed(1):'');
+      S('text',{x:cx,y:226,'text-anchor':'middle',style:'font-weight:600;fill:'+C.ink},svg,'Arm '+(i+1));
+      S('line',{x1:cx+48,y1:200,x2:cx+66,y2:200,stroke:C.ink3,'stroke-width':3},svg);
+      S('line',{x1:cx+66,y1:200,x2:cx+66,y2:on?188:158,stroke:C.ink3,'stroke-width':3},svg);
+      S('circle',{cx:cx+66,cy:on?188:158,r:7,fill:on?C.ink:C.ink3},svg);
+      S('text',{x:cx,y:272,'text-anchor':'middle',class:'num',style:'font-size:12px'},svg,'pulled '+s.pulls[i]+' time'+(s.pulls[i]===1?'':'s'));
+      S('text',{x:cx,y:292,'text-anchor':'middle',class:'num',style:'font-size:12px;font-weight:600;fill:'+C.reward},svg,s.n>=50?'true average payout '+TRUE[room][i]:'true average payout hidden');}
+  }
+  function one(){run++;const {a,r,b}=round();draw();
+    $('h2r').textContent='Pulled arm '+(a+1)+': r = '+r.toFixed(1)+'. Average so far in this room: r̄ = '+b.toFixed(2)+'. r − r̄ = '+fmt(r-b,2)+', so π(arm '+(a+1)+') goes '+(r>b?'up':'down')+' and the other two go '+(r>b?'down':'up')+'.';}
+  function many(){const id=++run;let k=0;
+    const fin=()=>{const p=pol(st[room].H),best=p.indexOf(Math.max(...p));draw();
+      $('h2r').textContent='After '+st[room].n+' rounds in Room '+'AB'[room]+', the policy favours arm '+(best+1)+'. '+(room===0?'Now switch rooms: the best arm there is a different one, and the policy for this room is untouched.':'Each room has its own best arm, and the learner keeps a separate preference for each.');};
+    if(REDUCE){for(;k<50;k++)round();fin();return;}
+    (function f(){if(id!==run)return;round();draw();++k<50?setTimeout(f,45):fin();})();}
+  seg('h2seg',v=>{room=+v;run++;draw();$('h2r').textContent='You are told which room you are in before you choose. The policy can be different in each.';});
+  $('h2one').addEventListener('click',one);$('h2many').addEventListener('click',many);
+  $('h2reset').addEventListener('click',()=>{run++;reset();draw();$('h2r').textContent='The learner starts with no preference: one third each.';});
+  reset();draw();$('h2r').textContent='The learner starts with no preference: one third each.';
+})();
+
+/* ---------- Figure 3: the mapping ---------- */
+(function(){
+  const svg=$('h3'),M=[['Context','The prompt'],['Arm','One complete generated response'],['Reward','Verifier or preference score'],['Policy','The language model'],['Pulling a lever','Sampling a response']];
+  let prog=M.length,run=0;
+  function draw(){wipe(svg);
+    S('text',{x:150,y:24,'text-anchor':'middle',style:'font-weight:700;font-size:15px;fill:'+C.ink},svg,'Bandit');
+    S('text',{x:580,y:24,'text-anchor':'middle',style:'font-weight:700;font-size:15px;fill:'+C.ink},svg,'Language-model training');
+    M.forEach(([a,b],i)=>{const y=42+i*56,t=Math.max(0,Math.min(1,prog-i));
+      S('rect',{x:40,y,width:220,height:42,rx:10,fill:C.wash,stroke:C.ink3},svg);
+      S('text',{x:150,y:y+26,'text-anchor':'middle',style:'font-weight:650;fill:'+C.ink},svg,a);
+      if(t>0)S('line',{x1:260,y1:y+21,x2:260+180*ease(t),y2:y+21,stroke:C.base,'stroke-width':2.5,'stroke-linecap':'round'},svg);
+      S('rect',{x:440,y,width:280,height:42,rx:10,fill:t>=1?C.base:C.panel,stroke:t>=1?C.base:C.line},svg);
+      S('text',{x:580,y:y+26,'text-anchor':'middle',style:'font-weight:650;fill:'+(t>=1?'#fff':C.panel)},svg,b);});}
+  function go(){const id=++run;tween(2600,t=>{if(id!==run)return;prog=t*M.length;draw();});}
+  $('h3go').addEventListener('click',go);draw();onceVisible(svg,go);
+})();
+
+/* ---------- Figure 4: generate, score, compare, update ---------- */
+(function(){
+  const svg=$('h4'),R=[.9,.2,.6,.4,.8,.1],mean=.5,sd=Math.sqrt(R.reduce((a,r)=>a+(r-mean)**2,0)/6);
+  const TXT=['Six responses o₁…o₆ sampled for the same prompt: six arms pulled in one context.',
+    'A grader gives each response one score rᵢ.',
+    'r̄ = 0.50. Each advantage is rᵢ − r̄.',
+    'Each response is pushed by its advantage: up if positive, down if negative, in proportion to its size.'];
+  let stage=4,run=0;
+  function draw(){wipe(svg);const div=$('h4sd').checked;
+    [['responses oᵢ',62],['score rᵢ',128],['advantage',196],['update',292]].forEach(([l,y],i)=>
+      S('text',{x:24,y,style:'font-weight:650;fill:'+(stage>i?C.ink:C.line)},svg,l));
+    const A=R.map(r=>div?(r-mean)/sd:r-mean),mx=Math.max(...A.map(Math.abs)),sc=40/mx,y0=192;
+    if(stage>=3){S('line',{x1:130,y1:y0,x2:735,y2:y0,stroke:C.base,'stroke-width':2,'stroke-dasharray':'7 5'},svg);
+      S('text',{x:24,y:y0+22,style:'font-size:12px;font-weight:600;fill:'+C.base},svg,'dashed: average');}
+    R.forEach((r,i)=>{const x=140+i*100,w=70,a=A[i],col=a>=0?C.pos:C.neg;
+      S('rect',{x,y:30,width:w,height:56,rx:8,fill:C.panel,stroke:C.ink3},svg);
+      [0,1,2,3].forEach(k=>S('line',{x1:x+10,y1:44+k*10,x2:x+w-10-((i*7+k*13)%22),y2:44+k*10,stroke:C.ink3,'stroke-width':3,'stroke-linecap':'round',opacity:.5},svg));
+      if(stage>=2)S('text',{x:x+w/2,y:128,'text-anchor':'middle',class:'num',style:'font-weight:700;font-size:16px;fill:'+C.reward},svg,r.toFixed(1));
+      if(stage>=3){S('rect',{x:x+15,y:a>=0?y0-a*sc:y0,width:w-30,height:Math.abs(a)*sc,rx:3,fill:col},svg);
+        S('text',{x:x+w/2,y:a>=0?y0+16:y0-7,'text-anchor':'middle',class:'num',style:'font-weight:650;fill:'+col},svg,fmt(a,2));}
+      if(stage>=4){const h=8+Math.abs(a)/mx*22,yb=a>=0?300:300-h-8;
+        S('path',{d:a>=0?`M${x+w/2} ${300-h-8} l-9 12 h6 v${h-4} h6 v-${h-4} h6 z`:`M${x+w/2} 300 l-9 -12 h6 v-${h-4} h6 v${h-4} h6 z`,fill:col},svg);
+        S('text',{x:x+w/2,y:320,'text-anchor':'middle',style:'font-size:12px;fill:'+col},svg,a>=0?'more likely':'less likely');}});
+    $('h4r').textContent=TXT[stage-1]+(stage>=3&&div?' With σ = '+sd.toFixed(2)+', each advantage becomes (rᵢ − r̄)/σ: a number of standard deviations above or below the group.':'');
+    document.querySelectorAll('#h4seg button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.v===stage));}
+  seg('h4seg',v=>{run++;stage=+v;draw();});
+  $('h4sd').addEventListener('change',draw);
+  $('h4play').addEventListener('click',()=>{const id=++run;stage=1;draw();if(REDUCE){stage=4;draw();return;}
+    (function f(){setTimeout(()=>{if(id!==run)return;stage++;draw();if(stage<4)f();},1300);})();});
+  draw();
+})();
+
+/* ---------- Figure 5: chess, robot, one response ---------- */
+(function(){
+  const svg=$('h5');let t=1,run=0;
+  function lane(y,title,note,build){
+    S('text',{x:40,y:y-14,style:'font-weight:650;fill:'+C.ink},svg,title);
+    S('text',{x:720,y:y-14,'text-anchor':'end',style:'font-weight:650;fill:'+C.reward},svg,note);
+    build(y);}
+  function draw(){wipe(svg);
+    const d=S('defs',{},svg),cp=S('clipPath',{id:'h5c'},d);S('rect',{x:0,y:0,width:40+680*t+2,height:320},cp);
+    const g=S('g',{'clip-path':'url(#h5c)'},svg);
+    const mark=(x,y,w,env)=>S('rect',{x,y,width:w,height:30,rx:Math.min(4,w/2),fill:env?C.reward:C.ink},g);
+    lane(50,'Chess: 20 moves each','answered after every move',y=>{for(let i=0;i<40;i++)mark(40+i*17,y,12,i%2);});
+    lane(150,'A walking robot: 100 control steps','answered at every step',y=>{for(let i=0;i<200;i++)mark(40+i*3.4,y,2.4,i%2);});
+    lane(250,'A language model writing one response','answered once, by the grader',y=>{mark(40,y,660,0);mark(708,y,12,1);});
+    S('text',{x:40,y:105,style:'font-size:12px'},svg,'A mistake on move 9 may only show up on move 40.');
+    S('text',{x:40,y:205,style:'font-size:12px'},svg,'Every step changes the balance the next step must handle.');
+    S('text',{x:40,y:305,style:'font-size:12px'},svg,'Nothing outside the model happens until the response is finished.');}
+  $('h5go').addEventListener('click',()=>{const id=++run;tween(3200,v=>{if(id!==run)return;t=v;draw();});});draw();
+})();
+
+/* ---------- Figure 6: breaking the analogy ---------- */
+(function(){
+  const svg=$('h6');
+  function draw(){wipe(svg);const k=+$('h6k').value;$('h6ko').textContent=k;
+    const X0=40,W=640,ew=14,gap=4,mw=(W-k*(ew+gap)-k*gap)/(k+1);let x=X0;
+    for(let i=0;i<=k;i++){S('rect',{x,y:60,width:mw,height:44,rx:6,fill:C.ink},svg);
+      if(mw>46)S('text',{x:x+mw/2,y:87,'text-anchor':'middle',style:'font-size:12px;fill:#fff'},svg,k?'choice '+(i+1):'one uninterrupted response');
+      x+=mw+gap;if(i<k){S('rect',{x,y:60,width:ew,height:44,rx:5,fill:C.reward},svg);x+=ew+gap;}}
+    S('rect',{x:X0+W+8,y:60,width:32,height:44,rx:6,fill:C.reward},svg);
+    S('text',{x:X0+W+24,y:124,'text-anchor':'middle',style:'font-size:12px;font-weight:600;fill:'+C.reward},svg,'score');
+    S('text',{x:X0,y:40,style:'font-weight:650;fill:'+C.ink},svg,(k+1)+(k?' choices':' choice')+' behind one score');
+    $('h6r').textContent=k===0?'No interruptions. This is a contextual bandit: one context, one choice, one reward.':
+      k<4?'The model now makes '+(k+1)+' separate choices, and each later one reacts to something the model did not write. One score is shared between them.':
+      'With '+(k+1)+' choices behind one score, comparing episodes says little about which choice made the difference. This is a sequential problem being treated as a single arm.';}
+  $('h6k').addEventListener('input',draw);draw();
+})();
+
+/* ---------- Figure 7: summary flow ---------- */
+(function(){
+  const svg=$('h7'),N=[['Traditional RL','many choices,','the world answers back'],['Contextual bandit','one context, one choice,','one reward'],['GRPO','a group of arms, judged','against their own average'],['LLM training','prompt, response,','score']],
+    L=[['take away consequences','over time'],['pull several arms at once,','compare within the group'],['context = prompt,','arm = response']];
+  let p=7,run=0;
+  function draw(){wipe(svg);
+    const d=S('defs',{},svg),m=S('marker',{id:'h7a',viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:6,markerHeight:6,orient:'auto'},d);
+    S('path',{d:'M0 0 L10 5 L0 10 z',fill:C.ink},m);
+    N.forEach(([t,a,b],i)=>{const x=20+i*185,vis=p>=i*2,last=i===3;
+      const g=S('g',{opacity:vis?1:.12},svg);
+      S('rect',{x,y:40,width:165,height:92,rx:14,fill:last?C.ink:C.panel,stroke:C.ink,'stroke-width':1.5},g);
+      S('text',{x:x+82.5,y:72,'text-anchor':'middle',style:'font-weight:700;font-size:14.5px;fill:'+(last?'#fff':C.ink)},g,t);
+      S('text',{x:x+82.5,y:96,'text-anchor':'middle',style:'font-size:12px;fill:'+(last?'#D5DAE3':C.ink2)},g,a);
+      S('text',{x:x+82.5,y:112,'text-anchor':'middle',style:'font-size:12px;fill:'+(last?'#D5DAE3':C.ink2)},g,b);
+      if(i<3){const gl=S('g',{opacity:p>=i*2+1?1:.12},svg),ax=x+165;
+        S('line',{x1:ax+1,y1:86,x2:ax+19,y2:86,stroke:C.ink,'stroke-width':2,'marker-end':'url(#h7a)'},gl);
+        S('line',{x1:ax+10,y1:94,x2:ax+10,y2:166,stroke:C.base,'stroke-width':1.5,'stroke-dasharray':'3 3'},gl);
+        S('text',{x:ax+10,y:186,'text-anchor':'middle',style:'font-size:12px;font-weight:600;fill:'+C.base},gl,L[i][0]);
+        S('text',{x:ax+10,y:203,'text-anchor':'middle',style:'font-size:12px;font-weight:600;fill:'+C.base},gl,L[i][1]);}});}
+  function go(){const id=++run;tween(4200,t=>{if(id!==run)return;p=Math.floor(t*7.001);draw();});}
+  $('h7go').addEventListener('click',go);draw();onceVisible(svg,go);
+})();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Are GRPO and Dr. GRPO actually RL algorithms? Part 2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']],
+  packages:{'[+]':['color']},
+  macros:{rw:['{\\color{cRw}{#1}}',1],bs:['{\\color{cBs}{#1}}',1],sg:['{\\color{cSg}{#1}}',1],
+          gp:['{\\color{cGp}{#1}}',1],E:'\\mathbb{E}'}},
+  loader:{load:['[tex]/color']},
+  svg:{fontCache:'global'},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code','svg']}};
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+:root{
+  --bg:#FAFBFD;--panel:#FFFFFF;--wash:#F0F3F8;--ink:#18212F;--ink2:#465166;--ink3:#788396;--line:#DBE1EA;
+  --reward:#B57A00;--base:#2B6BE0;--pos:#12855D;--neg:#CC3D64;--grpo:#7448D4;--dr:#0B8498;
+  --sans:"Schibsted Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --serif:"Literata",Georgia,"Times New Roman",serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--serif);font-size:18px;line-height:1.72}
+main{padding:0 1.25rem 5rem}
+main>*{max-width:41rem;margin-left:auto;margin-right:auto}
+main>figure,main>.wide{max-width:54rem}
+
+.series{display:flex;gap:.4rem;flex-wrap:wrap;max-width:54rem;margin:0 auto;padding:1.1rem 1.25rem;font-family:var(--sans);font-size:.83rem}
+.series a{flex:1 1 11rem;text-decoration:none;color:var(--ink2);padding:.55rem .8rem;border:1px solid var(--line);border-radius:10px;background:var(--panel);line-height:1.3}
+.series a b{display:block;color:var(--ink3);font-weight:500;font-size:.76rem}
+.series a[aria-current]{border-color:var(--ink);color:var(--ink);box-shadow:inset 0 -3px 0 var(--ink)}
+.series a:hover{border-color:var(--ink3)}
+
+.hero{padding:3.2rem 0 1rem}
+h1{font-family:var(--sans);font-weight:700;font-size:clamp(2.1rem,6vw,3.5rem);line-height:1.04;letter-spacing:-.03em;margin:0 0 1.2rem;text-wrap:balance}
+.lede{font-size:1.22rem;line-height:1.55;color:var(--ink2);margin:0}
+h2{font-family:var(--sans);font-weight:700;font-size:1.65rem;line-height:1.18;letter-spacing:-.018em;margin:4.5rem auto 1rem;display:flex;gap:.75rem;align-items:baseline;text-wrap:balance}
+h2 .n{flex:none;font-size:.95rem;font-weight:600;color:var(--bg);background:var(--ink);width:1.75rem;height:1.75rem;border-radius:50%;display:inline-grid;place-items:center;transform:translateY(-.15rem)}
+h3{font-family:var(--sans);font-weight:650;font-size:1.1rem;margin:2.4rem auto .4rem;letter-spacing:-.005em}
+p{margin:1rem auto}
+a{color:var(--base)}
+strong{font-weight:650}
+.q{font-size:1.18rem;line-height:1.5;border-left:3px solid var(--ink);padding:.1rem 0 .1rem 1.1rem;margin:1.8rem auto;font-style:italic}
+
+/* colour is vocabulary: each quantity keeps one colour in prose, maths and figures */
+.w{font-family:var(--sans);font-weight:650;font-size:.94em;white-space:nowrap}
+.w.reward{color:var(--reward)}.w.base{color:var(--base)}.w.pos{color:var(--pos)}.w.neg{color:var(--neg)}
+.w.grpo{color:var(--grpo)}.w.dr{color:var(--dr)}
+.legend{display:flex;flex-wrap:wrap;gap:.5rem 1.4rem;font-family:var(--sans);font-size:.86rem;color:var(--ink2);margin:1.6rem auto 0;padding:.9rem 0 0;border-top:1px solid var(--line)}
+.legend i{display:inline-block;width:.75rem;height:.75rem;border-radius:3px;margin-right:.4rem;vertical-align:-.05rem}
+
+.wordeq{font-family:var(--sans);font-weight:650;font-size:clamp(1.05rem,3.4vw,1.5rem);text-align:center;margin:2rem auto;line-height:1.5}
+.wordeq span{white-space:nowrap}
+.math{overflow-x:auto;overflow-y:hidden;margin:1.4rem auto;padding:.2rem 0}
+
+figure{margin:2.2rem auto;padding:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1.1rem 1.1rem .9rem}
+.panel>svg{display:block;width:100%;height:auto}
+figcaption{font-family:var(--sans);font-size:.86rem;line-height:1.5;color:var(--ink2);margin:.75rem auto 0;max-width:41rem}
+.ctl{display:flex;flex-wrap:wrap;gap:.6rem 1.2rem;align-items:center;font-family:var(--sans);font-size:.86rem;color:var(--ink2);margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--line)}
+.ctl label{display:flex;gap:.55rem;align-items:center}
+.ctl output,.read{font-variant-numeric:tabular-nums;color:var(--ink);font-weight:600}
+.read{font-family:var(--sans);font-size:.92rem;font-weight:500;margin:.7rem 0 0;min-height:2.8em;line-height:1.45}
+input[type=range]{accent-color:var(--ink);width:9.5rem;max-width:42vw}
+button{font-family:var(--sans);font-size:.86rem;font-weight:600;color:var(--ink);background:var(--panel);border:1px solid var(--ink3);border-radius:8px;padding:.42rem .85rem;cursor:pointer}
+button:hover{border-color:var(--ink)}
+button.go{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.seg{display:inline-flex;border:1px solid var(--ink3);border-radius:8px;overflow:hidden}
+.seg button{border:0;border-radius:0;border-left:1px solid var(--line)}
+.seg button:first-child{border-left:0}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+button:focus-visible,input:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--base);outline-offset:2px}
+svg text{font-family:var(--sans);fill:var(--ink2);font-size:13px}
+svg .num{font-variant-numeric:tabular-nums}
+
+.take{background:var(--wash);border-radius:14px;padding:1.1rem 1.3rem 1.2rem;margin:2.4rem auto}
+.take h3{margin:0 0 .3rem;font-size:.84rem;color:var(--ink3);font-weight:600}
+.take p+p{margin-top:.7rem}
+.take p{margin:.3rem 0 0;font-family:var(--sans);font-size:1.06rem;line-height:1.5;font-weight:500}
+details.deep{border:1px solid var(--line);border-radius:12px;background:var(--panel);margin:1.8rem auto;font-size:.95rem}
+details.deep summary{cursor:pointer;font-family:var(--sans);font-weight:600;font-size:.92rem;padding:.8rem 1.1rem;list-style:none;display:flex;gap:.6rem;align-items:center}
+details.deep summary::-webkit-details-marker{display:none}
+details.deep summary::before{content:"+";font-size:1.2rem;line-height:1;width:1rem;color:var(--ink3)}
+details.deep[open] summary::before{content:"–"}
+details.deep summary small{font-weight:500;color:var(--ink3);font-size:.86rem}
+details.deep .in{padding:0 1.1rem 1rem;border-top:1px solid var(--line)}
+
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-family:var(--sans);font-size:.9rem;line-height:1.45;min-width:34rem}
+th,td{text-align:left;vertical-align:top;padding:.7rem .8rem;border-bottom:1px solid var(--line)}
+thead th{font-weight:650;border-bottom:2px solid var(--ink)}
+tbody th{font-weight:600;color:var(--ink2);width:24%}
+.chip{display:inline-block;font-family:var(--sans);font-size:.76rem;font-weight:650;padding:.12rem .55rem;border-radius:99px;border:1.5px solid currentColor;white-space:nowrap}
+.chip.ok{color:var(--pos)}.chip.mid{color:var(--reward)}.chip.no{color:var(--neg)}
+
+.check{list-style:none;padding:0;margin:0;font-family:var(--sans)}
+.check li{display:grid;grid-template-columns:8.2rem 6.2rem 1fr;gap:.4rem 1rem;padding:.85rem 0;border-bottom:1px solid var(--line);font-size:.92rem;line-height:1.5;align-items:start}
+.check li:last-child{border-bottom:0}
+.check li b{font-weight:650}
+.check li span.why{color:var(--ink2)}
+@media(max-width:640px){.check li{grid-template-columns:1fr auto}.check li span.why{grid-column:1/-1}}
+
+.final{display:grid;gap:.9rem;margin:2rem auto}
+.final div{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:1rem 1.2rem}
+.final h3{margin:0 0 .3rem;font-size:1rem}
+.final p{margin:0;font-size:.98rem}
+.next{display:block;max-width:41rem;margin:3.5rem auto 0;padding:1.1rem 1.3rem;border-radius:14px;background:var(--ink);color:var(--bg);text-decoration:none;font-family:var(--sans)}
+.next small{display:block;opacity:.7;font-size:.82rem}
+.next b{font-size:1.15rem}
+footer{max-width:41rem;margin:2.5rem auto 0;font-family:var(--sans);font-size:.8rem;color:var(--ink3)}
+@media(max-width:560px){body{font-size:17px}.panel{padding:.7rem .6rem}h2{font-size:1.4rem}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media(max-width:680px){.panel{overflow-x:auto}.panel>svg{min-width:640px}}
+
+.check.defs li{grid-template-columns:9.5rem 1fr}
+@media(max-width:640px){.check.defs li{grid-template-columns:1fr}}
+
+</style>
+</head>
+<body>
+<nav class="series" aria-label="The three parts of this tutorial">
+<a href="section1.html"><b>Part 1</b>Why must the baseline go to zero?</a>
+<a href="section2.html" aria-current="page"><b>Part 2</b>Are these really RL algorithms?</a>
+<a href="section3.html"><b>Part 3</b>Do they work on classic RL problems?</a>
+<a href="section4.html"><b>Part 4</b>A simpler mental model</a>
+</nav>
+<main>
+<span style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">\(\definecolor{cRw}{RGB}{181,122,0}\definecolor{cBs}{RGB}{43,107,224}\definecolor{cSg}{RGB}{18,133,93}\definecolor{cGp}{RGB}{116,72,212}\)</span>
+<header class="hero">
+  <h1>Are GRPO and Dr. GRPO actually reinforcement learning?</h1>
+  <p class="lede">Both are routinely called RL algorithms. This page does not take that on trust. It writes down what reinforcement learning asks for, checks each method against the list, and then explains why the parts that are missing do not seem to matter for language models.</p>
+</header>
+
+<p>A one-paragraph recap, so this page stands alone. Both methods train a language model the same way. Give it a prompt, sample a group of \(G\) responses, and have a grader score each one. A response's learning signal is its score minus the group's average score. Responses with a positive signal are made more likely and the rest less likely. <span class="w grpo">GRPO</span> also divides the signal by the standard deviation of the group's scores and by the response's length. <span class="w dr">Dr. GRPO</span> does neither.</p>
+
+<div class="math">\[ \text{Dr. GRPO:}\;\; \widehat{\nabla J} = \frac{1}{G}\sum_{i=1}^{G}(r_i-\bar r)\,\nabla\log\pi_\theta(o_i) \]</div>
+<div class="math">\[ \text{GRPO:}\;\; \widehat{\nabla J} = \frac{1}{G}\sum_{i=1}^{G}\frac{r_i-\bar r}{\sigma\,|o_i|}\,\nabla\log\pi_\theta(o_i) \]</div>
+
+<p>Here \(r_i\) is the score of response \(o_i\), \(\bar r\) is the group mean, and \(\nabla\log\pi_\theta(o_i)=\sum_t\nabla\log\pi_\theta(o_{i,t}\mid q,o_{i,&lt;t})\) is the direction in weight space that makes \(o_i\) more likely. Part 1 derives both.</p>
+
+<h2 id="what"><span class="n">1</span>What makes something an RL algorithm?</h2>
+
+<p>Reinforcement learning is learning from consequences. Something acts, the world responds, and a score says how well things went. No one supplies the right answer. Press play to watch the loop that every textbook definition is built around.</p>
+
+<figure>
+  <div class="panel">
+    <svg id="g1" viewBox="0 0 760 290" role="img" aria-label="The reinforcement learning loop between an agent and an environment"></svg>
+    <p class="read" id="g1r"></p>
+    <div class="ctl"><button class="go" id="g1run">Play four steps</button></div>
+  </div>
+  <figcaption>The agent sends an action. The environment sends back a new state and a reward. The strip at the bottom is the episode so far; the return is the sum of its rewards.</figcaption>
+</figure>
+
+<p>That loop gives a checklist. The first seven items are the vocabulary. The eighth is the problem classical RL spends most of its effort on.</p>
+
+<div class="panel wide">
+<ol class="check defs">
+  <li><b>Agent</b><span class="why">The thing that chooses. Its rule for choosing is the <em>policy</em>: given what it sees, a probability for each possible action.</span></li>
+  <li><b>Environment</b><span class="why">Everything outside the agent. It responds to actions.</span></li>
+  <li><b>State</b><span class="why">What the agent sees before each choice. It changes as a consequence of earlier actions.</span></li>
+  <li><b>Action</b><span class="why">One choice.</span></li>
+  <li><b>Reward</b><span class="why">A number from the environment saying how good things are.</span></li>
+  <li><b>Return</b><span class="why">The total reward over an episode. This is what the agent tries to make large.</span></li>
+  <li><b>Policy optimisation</b><span class="why">Changing the policy, from experience alone, so that the expected return goes up.</span></li>
+  <li><b>Credit over time</b><span class="why">Working out <em>which</em> of many actions earned a return that arrived later. Usually done with a learned predictor of future reward, called a critic.</span></li>
+</ol>
+</div>
+
+<h3>The same list, as the formal object</h3>
+<p>The standard formalisation is a Markov decision process. It has states \(s\), actions \(a\), a transition rule \(P(s_{t+1}\mid s_t,a_t)\) that belongs to the environment, and a reward \(r_t\). The agent's policy is \(\pi_\theta(a\mid s)\). The return from step \(t\) and the objective are</p>
+
+<div class="math">\[ R_t = \sum_{k\ge t} r_k, \qquad J(\theta) = \E_{\pi_\theta}\big[R_0\big] \]</div>
+
+<p>Policy optimisation follows the gradient of \(J\), which the policy-gradient theorem writes as a sum over steps:</p>
+
+<div class="math">\[ \nabla J \;=\; \E\Big[\sum_t \nabla\log\pi_\theta(a_t\mid s_t)\;A(s_t,a_t)\Big], \qquad A(s_t,a_t) = Q(s_t,a_t) - V(s_t) \]</div>
+
+<p>\(V(s)\) is the expected return from state \(s\). \(Q(s,a)\) is the expected return after taking action \(a\) there. Their difference, the advantage, says how much better action \(a\) was than the policy's average at that step. "Credit over time" means estimating a separate \(A(s_t,a_t)\) for every \(t\).</p>
+
+<div class="take"><h3>Takeaway</h3><p>RL is a loop: act, see the world respond, get scored, adjust. Formally: an MDP, a return, and a gradient that weights each step's action by its own advantage \(A(s_t,a_t)\).</p></div>
+
+<h2 id="grpo"><span class="n">2</span>GRPO against the checklist</h2>
+
+<p>First, write language-model training in the formal terms. For a prompt \(q\) and a response \(o=(o_1,\dots,o_T)\):</p>
+
+<div class="tbl wide"><table>
+<thead><tr><th>MDP element</th><th>In general</th><th>In GRPO and Dr. GRPO</th></tr></thead>
+<tbody>
+<tr><th>State</th><td>\(s_t\)</td><td>\(s_t=(q,\,o_{&lt;t})\): the prompt plus the tokens so far</td></tr>
+<tr><th>Action</th><td>\(a_t\)</td><td>\(a_t=o_t\): the next token</td></tr>
+<tr><th>Transition</th><td>\(s_{t+1}\sim P(\cdot\mid s_t,a_t)\), random, owned by the environment</td><td>\(s_{t+1}=(s_t,\,a_t)\): append the token. Deterministic.</td></tr>
+<tr><th>Reward</th><td>\(r_t\) at every step</td><td>\(r_t=0\) for \(t&lt;T\); \(r_T=r(q,o)\) from the grader</td></tr>
+<tr><th>Return</th><td>\(R_t=\sum_{k\ge t}r_k\), different for each \(t\)</td><td>\(R_t=r(q,o)\) for every \(t\)</td></tr>
+<tr><th>Advantage used</th><td>\(\hat A_t\approx Q(s_t,a_t)-V(s_t)\), one per step, from a critic</td><td>\(\hat A_t=r(q,o)-\bar r\) for every \(t\) (GRPO: divided by \(\sigma\) and \(T\))</td></tr>
+</tbody></table></div>
+
+<p>The right-hand column is a valid MDP, so the theorem applies. The verdicts below record how much of the general machinery that column actually exercises. Each item gets one of three verdicts. <span class="chip ok">Holds</span> means it is present in the ordinary sense. <span class="chip mid">Weakened</span> means it is present in a thinner form. <span class="chip no">Gone</span> means it has been removed or replaced.</p>
+
+<div class="panel wide">
+<ol class="check">
+  <li><b>Agent</b><span><span class="chip ok">Holds</span></span><span class="why">The language model is the policy: given the text so far, a probability for each next token.</span></li>
+  <li><b>Environment</b><span><span class="chip mid">Weakened</span></span><span class="why">It is a set of prompts and a grader. It speaks twice per episode: once to hand over the prompt and once to give a score. In between it does nothing.</span></li>
+  <li><b>State</b><span><span class="chip mid">Weakened</span></span><span class="why">The state is the prompt plus the tokens written so far. It does change, but only because the model appends its own token. The agent writes its own next state, and the world never surprises it mid-episode.</span></li>
+  <li><b>Action</b><span><span class="chip ok">Holds</span></span><span class="why">With an ambiguity. An action is either one token (hundreds per episode) or the whole response (one per episode). GRPO computes its update token by token and judges response by response.</span></li>
+  <li><b>Reward</b><span><span class="chip ok">Holds</span></span><span class="why">One number from the grader, at the end.</span></li>
+  <li><b>Return</b><span><span class="chip mid">Weakened</span></span><span class="why">With a single reward, \(R_t=r(q,o)\) for all \(t\). Every token in the response inherits the same number.</span></li>
+  <li><b>Policy optimisation</b><span><span class="chip mid">Weakened</span></span><span class="why">It learns by trial and error and does improve the policy. But the factors \(1/\sigma\) and \(1/|o_i|\) mean \(\E[\widehat{\nabla J}]\neq c\,\nabla J\) for any constant \(c\). It climbs a slightly different hill (part 1 has the derivation).</span></li>
+  <li><b>Credit over time</b><span><span class="chip no">Gone</span></span><span class="why">No critic and no per-step \(\hat A_t\). The group mean \(\bar r\) estimates only \(V(s_0)\), the value of the prompt, and is reused at every step. In its place: ask the same prompt \(G\) times and compare the outcomes. That needs something classical RL cannot usually assume, the power to restart from the identical state whenever you like.</span></li>
+</ol>
+</div>
+
+<p>The last row is the one that separates GRPO from textbook methods. Here is what it looks like on a single response.</p>
+
+<figure>
+  <div class="panel">
+    <svg id="g2" viewBox="0 0 760 210" role="img" aria-label="Per-step learning signal with a critic, compared with one signal copied to every token"></svg>
+    <div class="ctl"><button id="g2flip">Show a response that scored below average</button></div>
+  </div>
+  <figcaption>Each square is one token of a 30-token response, shaded by \(\hat A_t\). Top: a critic gives \(\hat A_t = V(s_{t+1})-V(s_t)\) here, different at every step, so one bad step in a good response can be singled out. (These values are illustrative, not from a trained critic.) Bottom: \(\hat A_t = r-\bar r\), one value for all \(t\).</figcaption>
+</figure>
+
+<div class="take"><h3>Takeaway</h3><p>GRPO keeps the agent, the actions, the reward and trial-and-error learning. It thins out the environment, the state and the return. It drops credit assignment over time and replaces it with comparison inside a group.</p></div>
+
+<h2 id="dr"><span class="n">3</span>Dr. GRPO against the checklist</h2>
+
+<p>Dr. GRPO collects experience exactly as GRPO does: same prompts, same groups, same grader. So its verdicts on the environment side come out the same, for the same reasons. The one row where it differs is the row about what the update optimises.</p>
+
+<div class="panel wide">
+<ol class="check">
+  <li><b>Agent</b><span><span class="chip ok">Holds</span></span><span class="why">The language model.</span></li>
+  <li><b>Environment</b><span><span class="chip mid">Weakened</span></span><span class="why">Prompts and a grader. Silent between the prompt and the score.</span></li>
+  <li><b>State</b><span><span class="chip mid">Weakened</span></span><span class="why">Prompt plus tokens so far, written by the agent itself.</span></li>
+  <li><b>Action</b><span><span class="chip ok">Holds</span></span><span class="why">Token or whole response, with the same ambiguity.</span></li>
+  <li><b>Reward</b><span><span class="chip ok">Holds</span></span><span class="why">One number at the end.</span></li>
+  <li><b>Return</b><span><span class="chip mid">Weakened</span></span><span class="why">\(R_t=r(q,o)\) for all \(t\). The same number reaches every token.</span></li>
+  <li><b>Policy optimisation</b><span><span class="chip ok">Holds</span></span><span class="why">\(\E[\widehat{\nabla J}]=\tfrac{G-1}{G}\nabla J\): the true gradient of expected return, shortened by a constant. This is the textbook policy-gradient method with a baseline, wrapped in a limit on how far one update may move the policy.</span></li>
+  <li><b>Credit over time</b><span><span class="chip no">Gone</span></span><span class="why">No critic. \(\hat A_t=r-\bar r\) for all \(t\), with the same need for restarts.</span></li>
+</ol>
+</div>
+
+<div class="take"><h3>Takeaway</h3><p>Dr. GRPO is the cleaner of the two as an optimiser: it climbs the hill RL says it should. As a user of the RL loop it is exactly as thin as GRPO.</p></div>
+
+<h2 id="env"><span class="n">4</span>Which environments suit them?</h2>
+
+<p>Suppose we accept both as RL methods. The checklist then predicts where they should do well: wherever the weakened and missing items were not needed in the first place.</p>
+
+<div class="tbl wide"><table>
+<thead><tr><th>Environment trait</th><th>Fit</th><th>Why</th></tr></thead>
+<tbody>
+<tr><th>One decision, then a verdict</th><td><span class="chip ok">Natural</span></td><td>There is nothing to assign credit across, so nothing is lost by not doing it.</td></tr>
+<tr><th>Reward only at the end</th><td><span class="chip ok">Natural</span></td><td>There are no intermediate rewards for the method to ignore.</td></tr>
+<tr><th>Evaluation-based reward</th><td><span class="chip ok">Natural</span></td><td>The grader can be any black box: a test suite, an answer checker, a judge model. Only its number is used.</td></tr>
+<tr><th>Ranking or relative reward</th><td><span class="chip ok">Natural</span></td><td>Only standing within the group matters. GRPO ignores both the offset and the scale of the scores; Dr. GRPO ignores the offset. One caution: if a response's reward is its rank <em>among its siblings</em>, the rewards are no longer independent, which part 1's analysis assumed.</td></tr>
+<tr><th>Enormous action space</th><td><span class="chip mid">Conditional</span></td><td>Actions are never listed, only sampled and compared. This works if the starting policy already samples sensible candidates.</td></tr>
+<tr><th>Very rare success</th><td><span class="chip no">Struggles</span></td><td>If every response in a group gets the same reward, \(r_i-\bar r=0\) for all \(i\). See the figure below.</td></tr>
+<tr><th>No restarts</th><td><span class="chip no">Struggles</span></td><td>A robot or a live conversation cannot be put back in the same state \(G\) times, so there is no group to compare.</td></tr>
+<tr><th>Long episodes where the world keeps responding</th><td><span class="chip no">Struggles</span></td><td>One number is spread over many decisions and much outside randomness. The signal for each decision gets noisier as episodes get longer.</td></tr>
+<tr><th>Reward at every step</th><td><span class="chip no">Wasteful</span></td><td>The per-step information is summed into one total and its timing is thrown away.</td></tr>
+</tbody></table></div>
+
+<figure>
+  <div class="panel">
+    <svg id="g3" viewBox="0 0 760 200" role="img" aria-label="One hundred groups, shaded by whether they carry any learning signal"></svg>
+    <p class="read" id="g3r"></p>
+    <div class="ctl">
+      <label>Pass probability p <input type="range" id="g3p" min="1" max="99" value="5"><output id="g3po">5%</output></label>
+      <label>Group size G <input type="range" id="g3g" min="2" max="32" value="8"><output id="g3go">8</output></label>
+    </div>
+  </div>
+  <figcaption>This figure assumes a pass/fail grader, \(r\in\{0,1\}\), the usual case for checkable tasks. Each square is one group. If each response passes with probability \(p\), a group is all-fail or all-pass with probability \((1-p)^G+p^G\). Then \(r_i=\bar r\) for every \(i\) and the group produces no update, in either method.</figcaption>
+</figure>
+
+<div class="take"><h3>Takeaway</h3><p>These methods fit problems with one meaningful decision, an outcome score, free restarts, and a policy already good enough to succeed some of the time.</p></div>
+
+<p>Part 3 takes this table further: it shows how to run these methods on classic RL problems, predicts where they should do well, and checks the predictions against published experiments.</p>
+
+<h2 id="llm"><span class="n">5</span>If this is not classical RL, why does it work for language models?</h2>
+
+<p>Because training a language model on graded outputs is not a classical RL problem either. Play both lanes and count how often the environment speaks.</p>
+
+<figure>
+  <div class="panel">
+    <svg id="g4" viewBox="0 0 760 300" role="img" aria-label="An episode of classical reinforcement learning compared with an episode of language model training"></svg>
+    <p class="read" id="g4r"></p>
+    <div class="ctl"><button class="go" id="g4run">Play both episodes</button></div>
+  </div>
+  <figcaption>Dark squares are choices by the agent. Amber squares are the environment speaking. In the top lane they alternate. In the bottom lane the environment opens and closes the episode and is silent in between.</figcaption>
+</figure>
+
+<p><strong>The world does not answer back.</strong> Classical machinery exists to cope with an environment that reacts: a state the agent cannot predict, consequences that unfold over time. While a model writes a response, the only thing changing the state is the model. There are no outside dynamics to cope with.</p>
+
+<p><strong>The reward is about the outcome.</strong> The grader scores the finished response. It has no opinion about token 37. Because the transition is deterministic and the only reward is terminal, the sum over steps collapses: \(\sum_t\nabla\log\pi_\theta(o_t\mid s_t) = \nabla\log\pi_\theta(o\mid q)\), and the policy gradient becomes \(\E\big[\nabla\log\pi_\theta(o\mid q)\,(r(q,o)-V(q))\big]\). That is a statement about whole responses. Giving every token the same number is what the mathematics asks for here, not a shortcut.</p>
+
+<p><strong>Restarts are free.</strong> A critic is a way of guessing \(V(s)\) when you can visit \(s\) only once. A prompt can be visited as many times as you like. Sampling \(G\) responses and averaging their scores <em>measures</em> the value directly, \(\bar r \to V(s_0)=\E_{o\sim\pi}[r(q,o)]\), with no second network to train.</p>
+
+<p><strong>Exploration is already done.</strong> Classical agents begin by acting at random. A pretrained model begins by writing plausible responses, some right and some wrong. That mix is what makes within-group comparison informative from the first step.</p>
+
+<p><strong>Some credit still gets through.</strong> Within one response every token gets the same signal. Across thousands of groups, though, a token pattern that keeps turning up in above-average responses collects positive signal again and again, while incidental tokens average out. Credit assignment happens slowly, by statistics. This is limited, and it is the first thing to fail when episodes become long.</p>
+
+<details class="deep"><summary>Deeper mathematical note <small>what a critic would add</small></summary><div class="in">
+<p>In the theorem, \(A(s_t,a_t)\) may be replaced by \(Q(s_t,a_t)-b(s_t)\) for any baseline \(b\) that does not depend on \(a_t\). Both methods replace \(Q(s_t,a_t)\) with the one observed outcome \(r(q,o)\) for every \(t\), and replace \(b(s_t)\) with the group mean, an estimate of the value of the <em>first</em> state \(s_0=q\) only. Both replacements are unbiased (Dr. GRPO) and are what a critic-free Monte Carlo policy gradient does. A critic would instead estimate \(V(s_t)\) for each prefix; that function exists, but learning it means training a second large network on sparse signal.</p>
+</div></details>
+
+<div class="take"><h3>Takeaway</h3><p>The full machinery of RL answers problems that graded text generation mostly does not pose: reacting environments, unrepeatable states, rewards tied to moments. Remove the problems and the simpler method is enough.</p></div>
+
+<h2 id="answers"><span class="n">6</span>Four answers</h2>
+
+<div class="final">
+  <div><h3>Are GRPO and Dr. GRPO valid RL algorithms?</h3><p>Yes. Both learn a policy from sampled experience and a reward, with no supervision about the right action. That is the definition.</p></div>
+  <div><h3>In what sense?</h3><p>They are policy-gradient methods of the simplest kind: sample complete episodes, score them, and shift probability towards the better ones. Dr. GRPO does this without bias. GRPO does it with two known distortions.</p></div>
+  <div><h3>In what sense are they not classical RL?</h3><p>They have no critic, no per-step credit, and no way to handle an environment that reacts during an episode. They also rely on restarting from the same state at will. They solve the corner of RL where the environment only poses a question and grades the answer.</p></div>
+  <div><h3>Why do they still work for language models?</h3><p>Because that corner is where language-model training lives. The environment is silent mid-episode, the reward describes the whole output, restarts cost nothing, and pretraining has already handled exploration.</p></div>
+</div>
+
+<a class="next" href="section3.html"><small>Next, part 3</small><b>Can GRPO and Dr. GRPO be used on classic RL problems?</b></a>
+
+<footer>Part 1 covers the baseline and bias analysis that this page refers to. All figures compute their numbers in the page.</footer>
+
+</main>
+<script>
+const NS='http://www.w3.org/2000/svg';
+const $=id=>document.getElementById(id);
+const C={ink:'#18212F',ink2:'#465166',ink3:'#788396',line:'#DBE1EA',wash:'#F0F3F8',panel:'#FFFFFF',
+  reward:'#B57A00',base:'#2B6BE0',pos:'#12855D',neg:'#CC3D64',grpo:'#7448D4',dr:'#0B8498'};
+const REDUCE=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function S(tag,attrs,parent,text){const e=document.createElementNS(NS,tag);
+  for(const k in attrs)e.setAttribute(k,attrs[k]);if(text!==undefined)e.textContent=text;if(parent)parent.appendChild(e);return e;}
+function wipe(svg){while(svg.lastChild)svg.removeChild(svg.lastChild);}
+const fmt=(v,d=2)=>(v>=0?'+':'−')+Math.abs(v).toFixed(d);
+function seg(id,cb){const box=$(id);box.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+  box.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));cb(b.dataset.v);}));}
+/* run fn(t in 0..1) over ms; instantly if the reader prefers reduced motion */
+function tween(ms,fn,done){if(REDUCE){fn(1);done&&done();return;}
+  const t0=performance.now();(function f(now){const t=Math.min(1,(now-t0)/ms);fn(t);t<1?requestAnimationFrame(f):(done&&done());})(t0);}
+const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+
+/* ---------- Figure 1: the RL loop ---------- */
+(function(){
+  const svg=$('g1'),RW=[1,0,2,-1];let n=4,dot=null,run=0;
+  function box(x,lab,sub){S('rect',{x,y:40,width:180,height:84,rx:12,fill:C.wash,stroke:C.ink,'stroke-width':1.5},svg);
+    S('text',{x:x+90,y:78,'text-anchor':'middle',style:'font-weight:700;font-size:17px;fill:'+C.ink},svg,lab);
+    S('text',{x:x+90,y:100,'text-anchor':'middle',style:'font-size:12px'},svg,sub);}
+  function draw(){
+    wipe(svg);
+    const d=S('defs',{},svg),m=S('marker',{id:'g1a',viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:7,markerHeight:7,orient:'auto'},d);
+    S('path',{d:'M0 0 L10 5 L0 10 z',fill:C.ink2},m);
+    box(70,'Agent','chooses by its policy');box(510,'Environment','responds');
+    S('line',{x1:255,y1:64,x2:505,y2:64,stroke:C.ink2,'stroke-width':1.5,'marker-end':'url(#g1a)'},svg);
+    S('line',{x1:505,y1:102,x2:255,y2:102,stroke:C.ink2,'stroke-width':1.5,'marker-end':'url(#g1a)'},svg);
+    S('text',{x:380,y:56,'text-anchor':'middle',style:'font-weight:600;fill:'+C.ink},svg,'action');
+    S('text',{x:380,y:122,'text-anchor':'middle',style:'font-weight:600;fill:'+C.reward},svg,'new state + reward');
+    if(dot)S('circle',{cx:dot.x,cy:dot.y,r:8,fill:dot.c},svg);
+    const y=215;S('text',{x:70,y:y-38,style:'font-weight:600;fill:'+C.ink},svg,'The episode so far');
+    for(let i=0;i<=n;i++){const x=90+i*130;
+      if(i){S('line',{x1:x-108,y1:y,x2:x-24,y2:y,stroke:C.ink2,'stroke-width':1.5,'marker-end':'url(#g1a)'},svg);
+        S('text',{x:x-66,y:y-9,'text-anchor':'middle',style:'font-size:12px'},svg,'action '+i);
+        S('text',{x:x-66,y:y+20,'text-anchor':'middle',class:'num',style:'font-weight:650;fill:'+C.reward},svg,'reward '+(RW[i-1]?fmt(RW[i-1],0):'0'));}
+      S('circle',{cx:x,cy:y,r:20,fill:i===n?C.ink:C.wash,stroke:C.ink,'stroke-width':1.5},svg);
+      S('text',{x,y:y+5,'text-anchor':'middle',style:'font-weight:650;fill:'+(i===n?'#fff':C.ink)},svg,'s'+i);}
+    const ret=RW.slice(0,n).reduce((a,b)=>a+b,0);
+    $('g1r').textContent=n===0?'The episode begins in state s0.':'After '+n+' step'+(n>1?'s':'')+': return = '+RW.slice(0,n).map(v=>v?fmt(v,0):'+ 0').join(' ')+' = '+ret+'. Each action changed the state the next action had to deal with.';
+  }
+  function go(){const id=++run;n=0;dot=null;draw();
+    if(REDUCE){n=4;draw();return;}
+    (function stepf(){if(id!==run)return;if(n>=4){dot=null;draw();return;}
+      tween(480,t=>{if(id!==run)return;dot={x:255+250*ease(t),y:64,c:C.ink};draw();},()=>
+      tween(480,t=>{if(id!==run)return;dot={x:505-250*ease(t),y:102,c:C.reward};draw();},()=>{if(id!==run)return;n++;dot=null;draw();setTimeout(stepf,260);}));})();}
+  $('g1run').addEventListener('click',go);draw();
+})();
+
+/* ---------- Figure 2: per-step credit vs one number ---------- */
+(function(){
+  const svg=$('g2');let good=true;
+  const A=[.3,.2,.4,.1,.3,.5,.2,.3,.1,.4,.2,-1,.3,.2,.5,.3,.1,.4,.2,.3,.6,.2,.3,.1,.4,.3,.2,.5,.3,.2];
+  function row(y,title,vals,note){
+    S('text',{x:24,y:y-12,style:'font-weight:650;fill:'+C.ink},svg,title);
+    vals.forEach((v,i)=>S('rect',{x:24+i*23.6,y,width:20,height:26,rx:4,fill:v>=0?C.pos:C.neg,opacity:Math.min(1,.25+Math.abs(v)*.9)},svg));
+    S('text',{x:24,y:y+46,style:'font-size:12px'},svg,note);}
+  function draw(){wipe(svg);const s=good?1:-1,v=A.map(a=>a*s);
+    row(34,'With a critic: a different advantage at each step',v,good?'Token 12 was a misstep inside a good response, and it is marked as one.':'Token 12 was a good step inside a poor response, and it is marked as one.');
+    row(134,'GRPO and Dr. GRPO: one advantage, r − r̄, at every step',A.map(()=>.55*s),good?'Token 12 is reinforced along with everything else.':'Token 12 is discouraged along with everything else.');
+    $('g2flip').textContent=good?'Show a response that scored below average':'Show a response that scored above average';}
+  $('g2flip').addEventListener('click',()=>{good=!good;draw();});draw();
+})();
+
+/* ---------- Figure 3: empty groups ---------- */
+(function(){
+  const svg=$('g3');
+  function draw(){wipe(svg);const p=+$('g3p').value/100,G=+$('g3g').value;
+    $('g3po').textContent=Math.round(p*100)+'%';$('g3go').textContent=G;
+    const waste=Math.pow(p,G)+Math.pow(1-p,G),k=Math.round(waste*100);
+    for(let i=0;i<100;i++){const x=42+(i%25)*27.4,y=22+Math.floor(i/25)*40,empty=i<k;
+      S('rect',{x,y,width:21,height:30,rx:4,fill:empty?'none':C.pos,stroke:empty?C.ink3:C.pos,'stroke-width':1.3,'stroke-dasharray':empty?'3 3':'none'},svg);}
+    $('g3r').textContent='(1−p)^G + p^G = '+waste.toFixed(2)+', so about '+k+' in 100 groups are empty (dashed). '+(p<.5?'Nearly all of those are groups where every response failed.':p>.5?'Nearly all of those are groups where every response succeeded.':'')+
+      (k>=50?' Most of the sampling budget produces no learning.':'');}
+  $('g3p').addEventListener('input',draw);$('g3g').addEventListener('input',draw);draw();
+})();
+
+/* ---------- Figure 4: classical RL episode vs LLM episode ---------- */
+(function(){
+  const svg=$('g4'),N=24;let k=N,run=0;
+  function lane(y,title,kinds,labels){
+    S('text',{x:40,y:y-16,style:'font-weight:650;fill:'+C.ink},svg,title);
+    let env=0;
+    kinds.forEach((e,i)=>{if(i>=k)return;if(e)env++;
+      S('rect',{x:40+i*28.4,y,width:23,height:34,rx:5,fill:e?C.reward:C.ink},svg);
+      if(labels[i])S('text',{x:40+i*28.4+11.5,y:y+52,'text-anchor':'middle',style:'font-size:11px'},svg,labels[i]);});
+    S('text',{x:722,y:y-16,'text-anchor':'end',class:'num',style:'font-weight:650;fill:'+C.reward},svg,'environment spoke '+env+' time'+(env===1?'':'s'));
+    return env;}
+  function draw(){wipe(svg);
+    const k1=[...Array(N)].map((_,i)=>i%2===1),l1=k1.map((e,i)=>e?'r':'');
+    lane(50,'Classical RL: a robot taking twelve steps',k1,l1);
+    S('text',{x:40,y:128,style:'font-size:12px'},svg,'act, world responds with a new state and a reward (r), act again…');
+    const k2=[...Array(N)].map((_,i)=>i===0||i===N-1),l2=k2.map((e,i)=>i===0?'prompt':i===N-1?'score':'');
+    lane(190,'Language-model training: one graded response',k2,l2);
+    S('text',{x:40,y:268,style:'font-size:12px'},svg,'prompt arrives, the model writes every token itself, then the grader speaks once');
+    $('g4r').textContent=k<N?'':'Twelve replies against two. And the two in the bottom lane are a question and a grade, not a reaction to anything the model did along the way.';}
+  $('g4run').addEventListener('click',()=>{const id=++run;k=0;tween(3600,t=>{if(id!==run)return;k=Math.round(t*N);draw();});});
+  draw();
+})();
+
+</script>
+</body>
+</html>

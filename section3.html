@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Can GRPO and Dr. GRPO be used on classic RL problems? Part 3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']],
+  packages:{'[+]':['color']},
+  macros:{rw:['{\\color{cRw}{#1}}',1],bs:['{\\color{cBs}{#1}}',1],sg:['{\\color{cSg}{#1}}',1],
+          gp:['{\\color{cGp}{#1}}',1],E:'\\mathbb{E}'}},
+  loader:{load:['[tex]/color']},
+  svg:{fontCache:'global'},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code','svg']}};
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+:root{
+  --bg:#FAFBFD;--panel:#FFFFFF;--wash:#F0F3F8;--ink:#18212F;--ink2:#465166;--ink3:#788396;--line:#DBE1EA;
+  --reward:#B57A00;--base:#2B6BE0;--pos:#12855D;--neg:#CC3D64;--grpo:#7448D4;--dr:#0B8498;
+  --sans:"Schibsted Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --serif:"Literata",Georgia,"Times New Roman",serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--serif);font-size:18px;line-height:1.72}
+main{padding:0 1.25rem 5rem}
+main>*{max-width:41rem;margin-left:auto;margin-right:auto}
+main>figure,main>.wide{max-width:54rem}
+
+.series{display:flex;gap:.4rem;flex-wrap:wrap;max-width:54rem;margin:0 auto;padding:1.1rem 1.25rem;font-family:var(--sans);font-size:.83rem}
+.series a{flex:1 1 11rem;text-decoration:none;color:var(--ink2);padding:.55rem .8rem;border:1px solid var(--line);border-radius:10px;background:var(--panel);line-height:1.3}
+.series a b{display:block;color:var(--ink3);font-weight:500;font-size:.76rem}
+.series a[aria-current]{border-color:var(--ink);color:var(--ink);box-shadow:inset 0 -3px 0 var(--ink)}
+.series a:hover{border-color:var(--ink3)}
+
+.hero{padding:3.2rem 0 1rem}
+h1{font-family:var(--sans);font-weight:700;font-size:clamp(2.1rem,6vw,3.5rem);line-height:1.04;letter-spacing:-.03em;margin:0 0 1.2rem;text-wrap:balance}
+.lede{font-size:1.22rem;line-height:1.55;color:var(--ink2);margin:0}
+h2{font-family:var(--sans);font-weight:700;font-size:1.65rem;line-height:1.18;letter-spacing:-.018em;margin:4.5rem auto 1rem;display:flex;gap:.75rem;align-items:baseline;text-wrap:balance}
+h2 .n{flex:none;font-size:.95rem;font-weight:600;color:var(--bg);background:var(--ink);width:1.75rem;height:1.75rem;border-radius:50%;display:inline-grid;place-items:center;transform:translateY(-.15rem)}
+h3{font-family:var(--sans);font-weight:650;font-size:1.1rem;margin:2.4rem auto .4rem;letter-spacing:-.005em}
+p{margin:1rem auto}
+a{color:var(--base)}
+strong{font-weight:650}
+.q{font-size:1.18rem;line-height:1.5;border-left:3px solid var(--ink);padding:.1rem 0 .1rem 1.1rem;margin:1.8rem auto;font-style:italic}
+
+/* colour is vocabulary: each quantity keeps one colour in prose, maths and figures */
+.w{font-family:var(--sans);font-weight:650;font-size:.94em;white-space:nowrap}
+.w.reward{color:var(--reward)}.w.base{color:var(--base)}.w.pos{color:var(--pos)}.w.neg{color:var(--neg)}
+.w.grpo{color:var(--grpo)}.w.dr{color:var(--dr)}
+.legend{display:flex;flex-wrap:wrap;gap:.5rem 1.4rem;font-family:var(--sans);font-size:.86rem;color:var(--ink2);margin:1.6rem auto 0;padding:.9rem 0 0;border-top:1px solid var(--line)}
+.legend i{display:inline-block;width:.75rem;height:.75rem;border-radius:3px;margin-right:.4rem;vertical-align:-.05rem}
+
+.wordeq{font-family:var(--sans);font-weight:650;font-size:clamp(1.05rem,3.4vw,1.5rem);text-align:center;margin:2rem auto;line-height:1.5}
+.wordeq span{white-space:nowrap}
+.math{overflow-x:auto;overflow-y:hidden;margin:1.4rem auto;padding:.2rem 0}
+
+figure{margin:2.2rem auto;padding:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1.1rem 1.1rem .9rem}
+.panel>svg{display:block;width:100%;height:auto}
+figcaption{font-family:var(--sans);font-size:.86rem;line-height:1.5;color:var(--ink2);margin:.75rem auto 0;max-width:41rem}
+.ctl{display:flex;flex-wrap:wrap;gap:.6rem 1.2rem;align-items:center;font-family:var(--sans);font-size:.86rem;color:var(--ink2);margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--line)}
+.ctl label{display:flex;gap:.55rem;align-items:center}
+.ctl output,.read{font-variant-numeric:tabular-nums;color:var(--ink);font-weight:600}
+.read{font-family:var(--sans);font-size:.92rem;font-weight:500;margin:.7rem 0 0;min-height:2.8em;line-height:1.45}
+input[type=range]{accent-color:var(--ink);width:9.5rem;max-width:42vw}
+button{font-family:var(--sans);font-size:.86rem;font-weight:600;color:var(--ink);background:var(--panel);border:1px solid var(--ink3);border-radius:8px;padding:.42rem .85rem;cursor:pointer}
+button:hover{border-color:var(--ink)}
+button.go{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.seg{display:inline-flex;border:1px solid var(--ink3);border-radius:8px;overflow:hidden}
+.seg button{border:0;border-radius:0;border-left:1px solid var(--line)}
+.seg button:first-child{border-left:0}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+button:focus-visible,input:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--base);outline-offset:2px}
+svg text{font-family:var(--sans);fill:var(--ink2);font-size:13px}
+svg .num{font-variant-numeric:tabular-nums}
+
+.take{background:var(--wash);border-radius:14px;padding:1.1rem 1.3rem 1.2rem;margin:2.4rem auto}
+.take h3{margin:0 0 .3rem;font-size:.84rem;color:var(--ink3);font-weight:600}
+.take p+p{margin-top:.7rem}
+.take p{margin:.3rem 0 0;font-family:var(--sans);font-size:1.06rem;line-height:1.5;font-weight:500}
+details.deep{border:1px solid var(--line);border-radius:12px;background:var(--panel);margin:1.8rem auto;font-size:.95rem}
+details.deep summary{cursor:pointer;font-family:var(--sans);font-weight:600;font-size:.92rem;padding:.8rem 1.1rem;list-style:none;display:flex;gap:.6rem;align-items:center}
+details.deep summary::-webkit-details-marker{display:none}
+details.deep summary::before{content:"+";font-size:1.2rem;line-height:1;width:1rem;color:var(--ink3)}
+details.deep[open] summary::before{content:"–"}
+details.deep summary small{font-weight:500;color:var(--ink3);font-size:.86rem}
+details.deep .in{padding:0 1.1rem 1rem;border-top:1px solid var(--line)}
+
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-family:var(--sans);font-size:.9rem;line-height:1.45;min-width:34rem}
+th,td{text-align:left;vertical-align:top;padding:.7rem .8rem;border-bottom:1px solid var(--line)}
+thead th{font-weight:650;border-bottom:2px solid var(--ink)}
+tbody th{font-weight:600;color:var(--ink2);width:24%}
+.chip{display:inline-block;font-family:var(--sans);font-size:.76rem;font-weight:650;padding:.12rem .55rem;border-radius:99px;border:1.5px solid currentColor;white-space:nowrap}
+.chip.ok{color:var(--pos)}.chip.mid{color:var(--reward)}.chip.no{color:var(--neg)}
+
+.check{list-style:none;padding:0;margin:0;font-family:var(--sans)}
+.check li{display:grid;grid-template-columns:8.2rem 6.2rem 1fr;gap:.4rem 1rem;padding:.85rem 0;border-bottom:1px solid var(--line);font-size:.92rem;line-height:1.5;align-items:start}
+.check li:last-child{border-bottom:0}
+.check li b{font-weight:650}
+.check li span.why{color:var(--ink2)}
+@media(max-width:640px){.check li{grid-template-columns:1fr auto}.check li span.why{grid-column:1/-1}}
+
+.final{display:grid;gap:.9rem;margin:2rem auto}
+.final div{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:1rem 1.2rem}
+.final h3{margin:0 0 .3rem;font-size:1rem}
+.final p{margin:0;font-size:.98rem}
+.next{display:block;max-width:41rem;margin:3.5rem auto 0;padding:1.1rem 1.3rem;border-radius:14px;background:var(--ink);color:var(--bg);text-decoration:none;font-family:var(--sans)}
+.next small{display:block;opacity:.7;font-size:.82rem}
+.next b{font-size:1.15rem}
+footer{max-width:41rem;margin:2.5rem auto 0;font-family:var(--sans);font-size:.8rem;color:var(--ink3)}
+@media(max-width:560px){body{font-size:17px}.panel{padding:.7rem .6rem}h2{font-size:1.4rem}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media(max-width:680px){.panel{overflow-x:auto}.panel>svg{min-width:640px}}
+
+
+</style>
+</head>
+<body>
+<nav class="series" aria-label="The three parts of this tutorial">
+<a href="section1.html"><b>Part 1</b>Why must the baseline go to zero?</a>
+<a href="section2.html"><b>Part 2</b>Are these really RL algorithms?</a>
+<a href="section3.html" aria-current="page"><b>Part 3</b>Do they work on classic RL problems?</a>
+<a href="section4.html"><b>Part 4</b>A simpler mental model</a>
+</nav>
+<main>
+<span style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">\(\definecolor{cRw}{RGB}{181,122,0}\definecolor{cBs}{RGB}{43,107,224}\definecolor{cSg}{RGB}{18,133,93}\definecolor{cGp}{RGB}{116,72,212}\)</span>
+<header class="hero">
+  <h1>Can GRPO and Dr. GRPO be used on classic RL problems?</h1>
+  <p class="lede">Both methods were built for language models. This page translates them into the terms of classic reinforcement learning, works out what is lost in translation, turns that into a prediction about where they should do well, and then checks the prediction against published experiments.</p>
+</header>
+
+<h2 id="recipe"><span class="n">1</span>The recipe, translated</h2>
+
+<p>Nothing in either method is specific to text. Each piece has a counterpart in a classic problem such as balancing a pole or planning a route.</p>
+
+<div class="tbl wide"><table>
+<thead><tr><th>In language-model training</th><th>In a classic RL problem</th></tr></thead>
+<tbody>
+<tr><td>Prompt \(q\)</td><td>Start state \(s_0\) (or a problem instance, such as one map of cities)</td></tr>
+<tr><td>Response \(o_i\)</td><td>Trajectory \(\tau_i=(s_0,a_{i,0},s_{i,1},a_{i,1},\dots)\): one full episode, also called a rollout</td></tr>
+<tr><td>Token \(o_{i,t}\)</td><td>Action \(a_{i,t}\)</td></tr>
+<tr><td>Score \(r_i\)</td><td>Return \(R_i=\sum_{t} r_{i,t}\): the episode's total reward</td></tr>
+<tr><td>Group of \(G\) responses to one prompt</td><td>\(G\) rollouts from the <em>same</em> start state</td></tr>
+<tr><td>Group mean \(\bar r\)</td><td>Group mean return \(\bar R=\frac1G\sum_j R_j\)</td></tr>
+</tbody></table></div>
+
+<p>Substituting these into Dr. GRPO's estimator from part 1 gives the classic-RL version:</p>
+
+<div class="math">\[ \widehat{\nabla J} \;=\; \frac{1}{G}\sum_{i=1}^{G}\,\big(R_i-\bar R\big)\,\sum_{t}\nabla_\theta\log\pi_\theta\big(a_{i,t}\mid s_{i,t}\big) \]</div>
+
+<p>In words: run the episode \(G\) times from the same start, compare each total to the group's average, and push <em>every</em> action in an episode up or down by that one difference.</p>
+
+<figure>
+  <div class="panel">
+    <svg id="k1" viewBox="0 0 760 320" role="img" aria-label="Eight rollouts shown as running reward totals over time, with their final returns compared to the group mean"></svg>
+    <p class="read" id="k1r"></p>
+    <div class="ctl">
+      <div class="seg" id="k1seg"><button data-v="0" aria-pressed="true">Same start state</button><button data-v="1" aria-pressed="false">Different start states</button></div>
+      <button class="go" id="k1run">Sample a new group</button>
+    </div>
+  </div>
+  <figcaption>Each line is one rollout: its running total of reward over 30 steps. Where a line ends is its return \(R_i\). The dashed line is the group mean \(\bar R\). Green rollouts ended above it and have all their actions reinforced; red ones ended below.</figcaption>
+</figure>
+
+<h3>The requirement hiding in the table</h3>
+<p>The last-but-one row asks for \(G\) rollouts from the <em>same</em> start state. With a prompt that is free. In a classic problem it needs a simulator that can be reset to an exact state.</p>
+<p>Switch the figure to "Different start states" to see why it matters. Some starts are easier than others, so returns differ before any action is taken. \(\bar R\) then estimates the average over starts, not the value \(V(s_0)\) of this start. The method is still unbiased, since \(\bar R\) is a legal baseline by part 1's argument. But \(R_i-\bar R\) now mostly measures which start was lucky, which is the off-centre problem from part 1.</p>
+
+<div class="take"><h3>Takeaway</h3><p>To apply the method: reset a simulator to one start state, run \(G\) episodes, and weight every action of episode \(i\) by \(R_i-\bar R\). It needs a resettable environment and nothing else.</p></div>
+
+<h2 id="valid"><span class="n">2</span>It is always valid. The question is noise.</h2>
+
+<h3>Why it stays unbiased</h3>
+<p>The probability of a trajectory multiplies the policy's choices by the environment's responses:</p>
+
+<div class="math">\[ p_\theta(\tau) \;=\; \prod_t \pi_\theta(a_t\mid s_t)\;P(s_{t+1}\mid s_t,a_t) \]</div>
+
+<p>Take the logarithm and differentiate with respect to \(\theta\). The environment's factors \(P\) do not contain \(\theta\), so they vanish, and the score function of a trajectory is \(g(\tau)=\sum_t\nabla_\theta\log\pi_\theta(a_t\mid s_t)\). That is the same form as the score function of a response. Part 1's proof never used anything else, so it carries over with \(o\) replaced by \(\tau\):</p>
+
+<div class="math">\[ \E\big[\widehat{\nabla J}\big] \;=\; \frac{G-1}{G}\,\nabla J \]</div>
+
+<p>This holds for any environment: random transitions, long horizons, rewards at every step. The estimator never points the wrong way on average. So the question for classic RL is not "is it correct?" but "how many samples does it need?"</p>
+
+<h3>What the single number contains</h3>
+<p>The ideal weight for the action at step \(t\) is its own advantage, \(A(s_t,a_t)=Q(s_t,a_t)-V(s_t)\): how much better that action was than the policy's average at that state. The weight actually used is \(R-\bar R\approx R-V(s_0)\). Write the return as a sum of per-step changes in value (the sum telescopes, with the value after the last step equal to zero):</p>
+
+<div class="math">\[ R - V(s_0) \;=\; \sum_{k}\Big[\,r_k + V(s_{k+1}) - V(s_k)\,\Big] \]</div>
+
+<p>Each bracket splits into the advantage of the action taken, plus whatever the environment added by chance: \(\varepsilon_k = r_k+V(s_{k+1})-Q(s_k,a_k)\), which averages to zero and is exactly zero when transitions are deterministic. So, for the action at step \(t\):</p>
+
+<div class="math">\[ R - V(s_0) \;=\; \underbrace{A(s_t,a_t)}_{\text{what step } t \text{ deserves}} \;+\; \underbrace{\sum_{k\neq t}A(s_k,a_k)}_{\text{every other decision}} \;+\; \underbrace{\sum_{k}\varepsilon_k}_{\text{the environment's luck}} \]</div>
+
+<p>Only the first term is about step \(t\). The other two are noise as far as that step is concerned. If the terms are of similar size and roughly independent, then for an episode of \(T\) steps the first term is one part in \(T(1+\lambda)\) of the weight's variance, where \(\lambda\) is the size of the luck relative to the advantages.</p>
+
+<p><strong>Does this not apply to language models too?</strong> Yes. A 500-token response has \(T=500\) in this formula, and each token's own credit is a small part of \(r_i-\bar r\). Part 2 called this credit assignment "by statistics". Two things soften it there: \(\lambda=0\), because nothing outside the model acts mid-response, and a pretrained model starts with most of its choices already good.</p>
+
+<div class="take"><h3>Takeaway</h3><p>On any problem the update is right on average. Its weight for each action is that action's advantage, buried under every other action's advantage and all of the environment's luck. The burial gets deeper with horizon and with randomness.</p></div>
+
+<h2 id="bench"><span class="n">3</span>A test bed</h2>
+
+<p>The claim can be tested on a problem small enough to run in this page. An episode has \(T\) steps. At each step the policy picks one of two actions; the good one pays 1 and the other pays 0, plus random noise of size \(s\) added by the environment. The policy starts at 50/50 on every step. Three ways of weighting the action at step \(t\) are compared, all using groups of \(G=8\) rollouts and the same learning rate:</p>
+
+<div class="tbl wide"><table>
+<thead><tr><th>Method</th><th>Weight on the action at step \(t\)</th><th>What it stands for</th></tr></thead>
+<tbody>
+<tr><td><span class="w grpo">Episode return</span></td><td>\(R_i-\bar R\)</td><td>GRPO and Dr. GRPO as translated above</td></tr>
+<tr><td><span class="w base">Reward-to-go</span></td><td>\(\sum_{k\ge t} r_{i,k}\) minus its group mean at step \(t\)</td><td>Drop rewards that came before the action. Still no critic.</td></tr>
+<tr><td><span class="w pos">Per-step</span></td><td>\(r_{i,t}\) minus its group mean at step \(t\)</td><td>What a perfect critic would give in this problem</td></tr>
+</tbody></table></div>
+
+<figure>
+  <div class="panel">
+    <svg id="k2" viewBox="0 0 760 400" role="img" aria-label="Composition of the weight and learning curves for three weighting methods"></svg>
+    <p class="read" id="k2r"></p>
+    <div class="ctl">
+      <label>Horizon T <input type="range" id="k2t" min="0" max="6" step="1" value="4"><output id="k2to">50</output></label>
+      <label>Environment noise s <input type="range" id="k2s" min="0" max="2" step="0.25" value="0"><output id="k2so">0</output></label>
+      <label><input type="checkbox" id="k2n" checked> Divide weights by their spread (as GRPO does)</label>
+    </div>
+  </div>
+  <figcaption>Top: what the episode-return weight is made of at the start of training, by share of variance. Bottom: fraction of good actions chosen, over 150 updates, averaged over 20 runs. With \(T=1\) and \(s=0\) the three methods are the same method.</figcaption>
+</figure>
+
+<p>Three things to try. Set \(T=1\): the curves coincide, because one decision followed by one score is where the method has nothing to lose. Raise \(T\) with \(s=0\): the episode-return curve falls behind, by the dilution in the formula. Then raise \(s\): it falls further, and reward-to-go recovers only part of the gap, because future luck is still in its weight.</p>
+<p>Untick the box to use raw weights, as Dr. GRPO does. All three then have the same expected update, and the gap shrinks when \(s=0\). It reopens as soon as the environment is noisy.</p>
+<p>A caution about the test bed. Its steps do not interact, so it isolates dilution and nothing else. And "per-step" assumes a perfect critic, which real critics are not. It shows the direction of the effect, not its size on a real problem.</p>
+
+<div class="take"><h3>Takeaway</h3><p>With one decision per episode the simple method loses nothing. Its handicap grows with the number of decisions and with the environment's randomness, as the decomposition predicts.</p></div>
+
+<h2 id="hyp"><span class="n">4</span>The hypothesis</h2>
+
+<p>The decomposition and the test bed suggest two requirements and three dials.</p>
+
+<p><strong>Requirement: resets.</strong> The environment can be put back in the same start state \(G\) times. Without this there is no group.</p>
+<p><strong>Requirement: some early success.</strong> If all \(G\) rollouts get the same return, every weight is zero. A random starting policy on a hard puzzle fails every time and learns nothing. Language models avoid this by being pretrained.</p>
+<p><strong>Dial 1: randomness of the environment.</strong> The more the world's responses vary, the larger the luck term.</p>
+<p><strong>Dial 2: horizon.</strong> The more decisions share one return, the smaller each one's share.</p>
+<p><strong>Dial 3: where the reward arrives.</strong> If reward comes only at the end, a critic has little to work with either, so going without one costs little. If reward comes at every step, the timing is information, and summing it into one total throws that away.</p>
+
+<p>So the prediction is: these methods should be closest to the best available method on <strong>resettable, deterministic problems with a single outcome score</strong>, and furthest behind on long, noisy problems with reward at every step. The map places some well-known problems. Click one for the reasoning.</p>
+
+<figure>
+  <div class="panel">
+    <svg id="k3" viewBox="0 0 760 380" role="img" aria-label="Classic RL problems placed by horizon and environment randomness, marked by predicted fit"></svg>
+    <p class="read" id="k3r"></p>
+  </div>
+  <figcaption>Horizontal: decisions per episode, on a log scale. Vertical: how random the environment's responses are. Positions are my judgement, not measurements. Colour is the predicted fit relative to a critic-based method such as PPO. A filled marker means a published experiment exists; section 5 says what it found.</figcaption>
+</figure>
+
+<div class="take"><h3>Takeaway</h3><p>Predicted best: routing and other one-shot construction problems. Predicted worst: long-horizon control with dense reward, games against an opponent, and anything that cannot be reset.</p></div>
+
+<h2 id="evidence"><span class="n">5</span>What published experiments show</h2>
+
+<p>The hypothesis above is reasoning, not results. Three published lines of work bear on it. I have read their abstracts and summaries, not reproduced them.</p>
+
+<div class="tbl wide"><table>
+<thead><tr><th>Problem</th><th>Prediction</th><th>What was reported</th></tr></thead>
+<tbody>
+<tr><th>Routing: travelling salesman, vehicle routing, knapsack</th><td><span class="chip ok">Good fit</span></td><td><span class="chip ok">Supports</span> POMO (Kwon et al., 2020) trains with exactly this baseline: the mean return over several rollouts of the same instance, with no critic. It reported the strongest learned-solver results of its time on all three problems. One difference: its rollouts are forced to begin from different first moves, so they are not independent samples.</td></tr>
+<tr><th>CartPole</th><td><span class="chip mid">Middling</span></td><td><span class="chip mid">Better than predicted</span> De Oliveira et al. (2025) found critic-free methods competitive with PPO here, and only here. Their explanation is early termination: the episode ends when the pole falls, so the return says directly how long the policy survived.</td></tr>
+<tr><th>Acrobot, MountainCar (continuous), HalfCheetah, Humanoid</th><td><span class="chip no">Poor fit</span></td><td><span class="chip ok">Supports</span> The same study found GRPO well behind PPO on all of these, and no better than a simple batch-mean baseline. It concludes that learned critics remain necessary for long-horizon tasks.</td></tr>
+<tr><th>Dense-reward robot control, with returns in place of episode totals</th><td><span class="chip mid">Improves with reward-to-go</span></td><td><span class="chip ok">Supports</span> GR2PO (2026) keeps the method critic-free but compares discounted returns across parallel rollouts at each time step. It reports competitive control performance on the tasks it tested, with PPO as the main comparison.</td></tr>
+</tbody></table></div>
+
+<h3>What the hypothesis missed</h3>
+<p><strong>Early termination.</strong> I rated CartPole as middling because of its horizon and per-step reward. The experiments say it is the one classic control task where the simple method keeps up. When an episode ends at the first serious mistake, the return itself locates the mistake in time, and that does part of a critic's job. This deserves to be a fourth dial.</p>
+<p><strong>Group construction.</strong> The same study found that smaller groups did better than larger ones, and suggests the reason is that its groups mixed unrelated episodes. That is the "different start states" setting of the first figure. If so, that study did not test the method with what the language-model setting gets for free: many rollouts from an identical start. That version remains to be measured on these benchmarks.</p>
+
+<div class="take"><h3>Takeaway</h3><p>The evidence so far agrees with the prediction at both ends: strong on routing problems, weak on long-horizon control. It adds one thing the reasoning missed: early termination helps a great deal.</p></div>
+
+<h2 id="ladder"><span class="n">6</span>If the fit is poor: what to add, in order</h2>
+
+<p>The gap between Dr. GRPO and a full method such as PPO can be closed one step at a time. Each step removes one term from the noise in section 2.</p>
+
+<div class="tbl wide"><table>
+<thead><tr><th>Step</th><th>Weight on the action at step \(t\)</th><th>Removes</th><th>Costs</th></tr></thead>
+<tbody>
+<tr><th>0. Dr. GRPO</th><td>\(R_i-\bar R\)</td><td>The shared part of the return</td><td>Resets</td></tr>
+<tr><th>1. Reward-to-go</th><td>\(\sum_{k\ge t}r_{i,k}\) minus its group mean at step \(t\)</td><td>Rewards and luck from before the action</td><td>Nothing more</td></tr>
+<tr><th>2. A learned baseline</th><td>\(\sum_{k\ge t}r_{i,k}-V_\phi(s_{i,t})\)</td><td>The need for a shared start state; differences between states</td><td>Training a critic \(V_\phi\)</td></tr>
+<tr><th>3. Bootstrapping (PPO with GAE)</th><td>\(r_{i,t}+V_\phi(s_{i,t+1})-V_\phi(s_{i,t})\), blended over a few steps</td><td>Most of the later decisions and later luck</td><td>Some bias from the critic's errors</td></tr>
+</tbody></table></div>
+
+<p>Step 1 is free and stays unbiased: the group mean of reward-to-go at step \(t\), leaving out rollout \(i\), does not depend on rollout \(i\)'s actions, so part 1's condition holds. Steps 2 and 3 are the "credit over time" machinery that part 2 found missing.</p>
+
+<h3>Which variant to start from</h3>
+<p>Start from Dr. GRPO, not GRPO. Part 1 showed that GRPO divides each weight by the episode's length. In classic problems length often <em>is</em> the outcome. In CartPole a long episode is a good one, so dividing by length shrinks the push on exactly the episodes that did best. Dividing by the spread \(\sigma\) is less harmful, and is close to the advantage normalisation that PPO implementations already use.</p>
+
+<div class="take"><h3>Takeaway</h3><p>Dr. GRPO is the bottom rung of a ladder whose top is PPO. Climb only as far as the problem forces you to: reward-to-go first, a critic when the horizon or the noise demands it.</p></div>
+
+<h2 id="answers"><span class="n">7</span>Four answers</h2>
+
+<div class="final">
+  <div><h3>Can they be applied to classic RL problems?</h3><p>Yes, to any problem with a resettable simulator. Run \(G\) episodes from one start state and weight every action by \(R_i-\bar R\). The update is unbiased on any environment.</p></div>
+  <div><h3>Where should they work best?</h3><p>Where one decision, or one uninterrupted construction, is followed by one score, and the environment adds no randomness. Routing problems are the clearest case, and the published results there are strong.</p></div>
+  <div><h3>Where should they work worst?</h3><p>Long episodes with reward at every step, random environments, opponents, and anything that cannot be reset. On standard control benchmarks beyond CartPole they have been measured well behind PPO.</p></div>
+  <div><h3>What decides it?</h3><p>How much of \(R_i-\bar R\) is about the action being weighted. That share falls with horizon and with randomness, and rises when episodes end at the first mistake.</p></div>
+</div>
+
+<a class="next" href="section4.html"><small>Next, part 4</small><b>A simpler mental model for all of this</b></a>
+
+<footer>Sources: Kwon et al., POMO: Policy Optimization with Multiple Optima for Reinforcement Learning (NeurIPS 2020). De Oliveira et al., Learning Without Critics? Revisiting GRPO in Classical Reinforcement Learning Environments (arXiv 2511.03527, 2025). GR2PO: Group Relative Return Policy Optimization for Continuous Robot Control (arXiv 2609.19850, 2026). The test bed computes its results in the page; the map's positions are qualitative.</footer>
+
+</main>
+<script>
+const NS='http://www.w3.org/2000/svg';
+const $=id=>document.getElementById(id);
+const C={ink:'#18212F',ink2:'#465166',ink3:'#788396',line:'#DBE1EA',wash:'#F0F3F8',panel:'#FFFFFF',
+  reward:'#B57A00',base:'#2B6BE0',pos:'#12855D',neg:'#CC3D64',grpo:'#7448D4',dr:'#0B8498'};
+const REDUCE=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function S(tag,attrs,parent,text){const e=document.createElementNS(NS,tag);
+  for(const k in attrs)e.setAttribute(k,attrs[k]);if(text!==undefined)e.textContent=text;if(parent)parent.appendChild(e);return e;}
+function wipe(svg){while(svg.lastChild)svg.removeChild(svg.lastChild);}
+const fmt=(v,d=2)=>(v>=0?'+':'−')+Math.abs(v).toFixed(d);
+function seg(id,cb){const box=$(id);box.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+  box.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));cb(b.dataset.v);}));}
+/* run fn(t in 0..1) over ms; instantly if the reader prefers reduced motion */
+function tween(ms,fn,done){if(REDUCE){fn(1);done&&done();return;}
+  const t0=performance.now();(function f(now){const t=Math.min(1,(now-t0)/ms);fn(t);t<1?requestAnimationFrame(f):(done&&done());})(t0);}
+const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+
+function rng32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function gauss(r){let u=0;while(u===0)u=r();return Math.sqrt(-2*Math.log(u))*Math.cos(6.283185307*r());}
+
+/* ---------- Figure 1: a group of rollouts ---------- */
+(function(){
+  const svg=$('k1'),G=8,T=30;let mode=0,paths,startPart,seed=7,prog=1,run=0;
+  function sample(){const r=rng32(seed++);paths=[];startPart=[];
+    for(let i=0;i<G;i++){const d=mode?gauss(r)*.35:0;let c=0;const p=[0];
+      for(let t=0;t<T;t++){c+=.5+d+gauss(r)*.6;p.push(c);}paths.push(p);startPart.push(d*T);}}
+  const vr=a=>{const m=a.reduce((x,y)=>x+y)/a.length;return a.reduce((x,y)=>x+(y-m)**2,0)/a.length;};
+  function draw(){
+    wipe(svg);const X0=60,X1=600,Y0=290,Y1=30,R=paths.map(p=>p[T]),mean=R.reduce((a,b)=>a+b)/G;
+    const lo=Math.min(0,...paths.flat()),hi=Math.max(...paths.flat()),Y=v=>Y0-(v-lo)/(hi-lo)*(Y0-Y1),X=t=>X0+t/T*(X1-X0);
+    S('line',{x1:X0,y1:Y0,x2:X1,y2:Y0,stroke:C.ink3},svg);S('line',{x1:X0,y1:Y0,x2:X0,y2:Y1,stroke:C.ink3},svg);
+    S('text',{x:(X0+X1)/2,y:Y0+22,'text-anchor':'middle',style:'font-size:12px'},svg,'step t');
+    S('text',{x:X0-8,y:Y1+4,'text-anchor':'end',style:'font-size:12px'},svg,'total');S('text',{x:X0-8,y:Y1+18,'text-anchor':'end',style:'font-size:12px'},svg,'reward');
+    S('circle',{cx:X0,cy:Y(0),r:6,fill:C.ink},svg);S('text',{x:X0+10,y:Y(0)+18,style:'font-size:12px;font-weight:600;fill:'+C.ink},svg,mode?'starts differ in difficulty':'s₀');
+    const n=Math.max(1,Math.round(prog*T));
+    paths.forEach((p,i)=>{const col=R[i]>=mean?C.pos:C.neg;
+      S('polyline',{points:p.slice(0,n+1).map((v,t)=>X(t).toFixed(1)+','+Y(v).toFixed(1)).join(' '),fill:'none',stroke:prog<1?C.ink3:col,'stroke-width':1.8,opacity:.85},svg);
+      if(prog>=1)S('circle',{cx:X1,cy:Y(p[T]),r:4.5,fill:col},svg);});
+    if(prog>=1){const L=R.map((v,i)=>({v,y:Y(v)})).sort((a,b)=>a.y-b.y);
+      for(let i=1;i<L.length;i++)if(L[i].y-L[i-1].y<13)L[i].y=L[i-1].y+13;
+      L.forEach(l=>S('text',{x:X1+12,y:l.y+4,class:'num',style:'font-size:11px;fill:'+(l.v>=mean?C.pos:C.neg)},svg,fmt(l.v-mean,1)));}
+    if(prog>=1){S('line',{x1:X1-40,y1:Y(mean),x2:X1+95,y2:Y(mean),stroke:C.base,'stroke-width':2,'stroke-dasharray':'6 4'},svg);
+      S('text',{x:X1+100,y:Y(mean)+4,style:'font-weight:650;fill:'+C.base},svg,'R̄');
+      S('text',{x:X1+12,y:Y1-6,style:'font-size:12px;font-weight:600;fill:'+C.ink},svg,'R − R̄');
+      const vs=vr(startPart),vt=vr(R.map((v,i)=>v-startPart[i]));
+      $('k1r').textContent=mode?'The rollouts began in different states. In this sample about '+Math.round(100*vs/(vs+vt))+'% of the spread in returns comes from which start was drawn, not from the actions taken. R̄ no longer estimates the value of any one start state.':
+        'All eight rollouts began in the same state s₀, so R̄ = '+mean.toFixed(1)+' estimates V(s₀), and every difference in return comes from what happened after the start.';}
+  }
+  function go(){const id=++run;sample();tween(1300,t=>{if(id!==run)return;prog=t;draw();});}
+  seg('k1seg',v=>{mode=+v;go();});$('k1run').addEventListener('click',go);sample();draw();
+})();
+
+/* ---------- Figure 2: the test bed ---------- */
+(function(){
+  const svg=$('k2'),TS=[1,5,10,20,50,100,200],G=8,STEPS=150,SEEDS=20,LR=.5;
+  const M=[['ep','Episode return',C.grpo],['rtg','Reward-to-go',C.base],['step','Per-step',C.pos]];
+  function sim(T,s,mode,norm){
+    const out=new Float64Array(STEPS+1),a=new Float64Array(G*T),w=new Float64Array(G*T),p=new Float64Array(T);
+    for(let sd=0;sd<SEEDS;sd++){const r=rng32(1000+sd),th=new Float64Array(T);out[0]+=.5;
+      for(let u=1;u<=STEPS;u++){
+        for(let t=0;t<T;t++)p[t]=1/(1+Math.exp(-th[t]));
+        for(let i=0;i<G;i++){let tot=0;
+          for(let t=0;t<T;t++){const act=r()<p[t]?1:0,rew=act+(s?s*gauss(r):0);a[i*T+t]=act;w[i*T+t]=rew;tot+=rew;}
+          if(mode==='ep')for(let t=0;t<T;t++)w[i*T+t]=tot;
+          else if(mode==='rtg'){let c=0;for(let t=T-1;t>=0;t--){c+=w[i*T+t];w[i*T+t]=c;}}}
+        let avg=0;
+        for(let t=0;t<T;t++){let m=0;for(let i=0;i<G;i++)m+=w[i*T+t];m/=G;
+          let v=0;for(let i=0;i<G;i++)v+=(w[i*T+t]-m)**2;const sdv=norm?Math.sqrt(v/G)+1e-8:1;
+          let g=0;for(let i=0;i<G;i++)g+=(w[i*T+t]-m)/sdv*(a[i*T+t]-p[t]);
+          th[t]+=LR*g/G;avg+=1/(1+Math.exp(-th[t]));}
+        out[u]+=avg/T;}}
+    return Array.from(out,v=>v/SEEDS);}
+  function draw(){
+    wipe(svg);const T=TS[+$('k2t').value],s=+$('k2s').value,norm=$('k2n').checked;
+    $('k2to').textContent=T;$('k2so').textContent=s;
+    // composition bar
+    const parts=[['this step\u2019s own advantage',.25,C.pos],['the other '+(T-1)+' steps',.25*(T-1),C.ink3],['environment luck',T*s*s,C.reward]],tot=parts.reduce((x,q)=>x+q[1],0);
+    S('text',{x:40,y:22,style:'font-weight:650;fill:'+C.ink},svg,'What R − R̄ is made of (share of variance)');
+    let x=40;parts.forEach(([n,v,c])=>{const wd=v/tot*680;if(wd>0)S('rect',{x,y:32,width:Math.max(wd,1.5),height:22,fill:c},svg);x+=wd;});
+    S('rect',{x:40,y:32,width:680,height:22,fill:'none',stroke:C.line},svg);
+    let lx=40;parts.forEach(([n,v,c])=>{S('rect',{x:lx,y:64,width:11,height:11,rx:2,fill:c},svg);
+      const pc=v/tot*100;S('text',{x:lx+17,y:74,class:'num',style:'font-size:12px'},svg,n+' '+(pc<1&&pc>0?pc.toFixed(1):Math.round(pc))+'%');lx+=235;});
+    // curves
+    const X0=70,X1=585,Y0=372,Y1=118,X=u=>X0+u/STEPS*(X1-X0),Y=v=>Y0-(v-.5)/.5*(Y0-Y1);
+    S('text',{x:40,y:106,style:'font-weight:650;fill:'+C.ink},svg,'Good actions chosen, by update');
+    [.5,.75,.9,1].forEach(v=>{S('line',{x1:X0,y1:Y(v),x2:X1,y2:Y(v),stroke:v===.9?C.ink3:C.line,'stroke-dasharray':v===.9?'4 4':'none'},svg);
+      S('text',{x:X0-8,y:Y(v)+4,'text-anchor':'end',class:'num',style:'font-size:11px'},svg,Math.round(v*100)+'%');});
+    [0,50,100,150].forEach(u=>S('text',{x:X(u),y:Y0+16,'text-anchor':'middle',class:'num',style:'font-size:11px'},svg,u));
+    const res=M.map(([m,n,c])=>({n,c,cv:sim(T,s,m,norm)}));
+    res.forEach(q=>S('polyline',{points:q.cv.map((v,u)=>X(u).toFixed(1)+','+Y(Math.min(1,Math.max(.5,v))).toFixed(1)).join(' '),fill:'none',stroke:q.c,'stroke-width':2.4,'stroke-linejoin':'round'},svg));
+    const lab=res.map(q=>({q,y:Y(Math.max(.5,q.cv[STEPS]))})).sort((a,b)=>a.y-b.y);
+    for(let i=1;i<lab.length;i++)if(lab[i].y-lab[i-1].y<16)lab[i].y=lab[i-1].y+16;
+    lab.forEach(l=>S('text',{x:X1+10,y:l.y+4,style:'font-weight:650;font-size:12.5px;fill:'+l.q.c},svg,l.q.n+' '+Math.round(l.q.cv[STEPS]*100)+'%'));
+    const t90=cv=>{const i=cv.findIndex(v=>v>=.9);return i<0?'not within 150':i;};
+    $('k2r').textContent='Updates needed to reach 90% (dashed line): per-step '+t90(res[2].cv)+', reward-to-go '+t90(res[1].cv)+', episode return '+t90(res[0].cv)+'.'+(T===1&&s===0?' One decision, no luck: the three weights are identical.':'');
+  }
+  ['k2t','k2s'].forEach(id=>$(id).addEventListener('input',draw));$('k2n').addEventListener('change',draw);draw();
+})();
+
+/* ---------- Figure 3: the map ---------- */
+(function(){
+  const svg=$('k3');let sel=1;
+  const P=[
+   {n:'One-shot decisions',h:1,v:0,f:'ok',e:0,w:'One decision, then one score. T = 1 and there is no luck term, so R − R̄ is exactly the advantage. Nothing is lost by having no critic.'},
+   {n:'Routing (100 cities)',h:100,v:0,f:'ok',e:1,w:'Deterministic, trivially resettable (the same map), and scored once by tour length. About 100 decisions share the score, but there is no luck term and a critic has little extra to offer. Published: POMO uses this baseline, with strong results.'},
+   {n:'CartPole',h:200,v:.1,f:'mid',e:1,w:'Up to a few hundred steps with reward at each one, which predicts a middling fit. Published results are better than that: critic-free methods keep up with PPO here, because the episode ends when the pole falls.'},
+   {n:'Puzzles (Sokoban)',h:400,v:0,f:'mid',e:0,w:'Deterministic and scored at the end, so the structure fits. But a random policy almost never solves one. Every group is then all-fail and every weight is zero. It needs a starting policy that already succeeds sometimes.'},
+   {n:'Acrobot',h:500,v:.1,f:'no',e:1,w:'Several hundred steps per episode with a constant penalty per step. Published: critic-free methods are well behind PPO.'},
+   {n:'HalfCheetah, Humanoid',h:1000,v:.1,f:'no',e:1,w:'1,000 steps with reward at every one. Each action\u2019s share of the return is tiny and the timing of the reward is discarded. Published: well behind PPO, and no better than a simple batch-mean baseline.'},
+   {n:'Atari games',h:5000,v:.35,f:'no',e:0,w:'Thousands of decisions, frequent rewards and some randomness. Resets need emulator save states. Every dial points the wrong way.'},
+   {n:'Chess, Go',h:80,v:.7,f:'no',e:0,w:'The opponent\u2019s replies are the environment, and they are not predictable. One win or loss is shared by all of your moves and all of theirs. Strong methods here rely on value functions and search.'}];
+  const col={ok:C.pos,mid:C.reward,no:C.neg},X=h=>70+Math.log10(h)/4*440,Y=v=>320-v*270;
+  function draw(){wipe(svg);
+    S('line',{x1:55,y1:335,x2:530,y2:335,stroke:C.ink3},svg);S('line',{x1:55,y1:335,x2:55,y2:40,stroke:C.ink3},svg);
+    [1,10,100,1000,10000].forEach(h=>{S('line',{x1:X(h),y1:335,x2:X(h),y2:340,stroke:C.ink3},svg);
+      S('text',{x:X(h),y:354,'text-anchor':'middle',class:'num',style:'font-size:11px'},svg,h.toLocaleString('en-US'));});
+    S('text',{x:292,y:374,'text-anchor':'middle',style:'font-size:12px'},svg,'decisions per episode (horizon T)');
+    S('text',{x:62,y:34,style:'font-size:12px'},svg,'environment more random ↑');
+    S('text',{x:98,y:329,style:'font-size:11px;fill:'+C.ink3},svg,'deterministic');
+    P.forEach((p,i)=>{const on=i===sel,c=col[p.f],
+      g=S('g',{style:'cursor:pointer',tabindex:0,role:'button','aria-label':p.n},svg);
+      S('circle',{cx:X(p.h),cy:Y(p.v),r:on?14:11.5,fill:p.e?c:C.panel,stroke:on?C.ink:c,'stroke-width':on?3:2.2},g);
+      S('text',{x:X(p.h),y:Y(p.v)+4.5,'text-anchor':'middle',class:'num',style:'font-weight:700;font-size:12px;fill:'+(p.e?'#fff':c)},g,i+1);
+      const ly=58+i*30;S('rect',{x:548,y:ly-15,width:200,height:26,rx:6,fill:on?C.wash:'transparent'},g);
+      S('circle',{cx:562,cy:ly-2,r:8,fill:p.e?c:C.panel,stroke:c,'stroke-width':2},g);
+      S('text',{x:562,y:ly+2,'text-anchor':'middle',class:'num',style:'font-weight:700;font-size:10px;fill:'+(p.e?'#fff':c)},g,i+1);
+      S('text',{x:578,y:ly+2,style:'font-size:12.5px;font-weight:'+(on?700:500)+';fill:'+C.ink},g,p.n);
+      const pick=()=>{sel=i;draw();};g.addEventListener('click',pick);g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick();}});});
+    [['ok','predicted good fit'],['mid','middling or conditional'],['no','predicted poor fit']].forEach(([f,t],i)=>{
+      S('rect',{x:548,y:310+i*18,width:11,height:11,rx:2,fill:col[f]},svg);S('text',{x:566,y:320+i*18,style:'font-size:11.5px'},svg,t);});
+    const p=P[sel];$('k3r').textContent=p.n+'. '+p.w;}
+  draw();
+})();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Why must the baseline expectation go to zero? GRPO and Dr. GRPO, part 1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']],
+  packages:{'[+]':['color']},
+  macros:{rw:['{\\color{cRw}{#1}}',1],bs:['{\\color{cBs}{#1}}',1],sg:['{\\color{cSg}{#1}}',1],
+          gp:['{\\color{cGp}{#1}}',1],E:'\\mathbb{E}'}},
+  loader:{load:['[tex]/color']},
+  svg:{fontCache:'global'},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code','svg']}};
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+:root{
+  --bg:#FAFBFD;--panel:#FFFFFF;--wash:#F0F3F8;--ink:#18212F;--ink2:#465166;--ink3:#788396;--line:#DBE1EA;
+  --reward:#B57A00;--base:#2B6BE0;--pos:#12855D;--neg:#CC3D64;--grpo:#7448D4;--dr:#0B8498;
+  --sans:"Schibsted Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --serif:"Literata",Georgia,"Times New Roman",serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--serif);font-size:18px;line-height:1.72}
+main{padding:0 1.25rem 5rem}
+main>*{max-width:41rem;margin-left:auto;margin-right:auto}
+main>figure,main>.wide{max-width:54rem}
+
+.series{display:flex;gap:.4rem;flex-wrap:wrap;max-width:54rem;margin:0 auto;padding:1.1rem 1.25rem;font-family:var(--sans);font-size:.83rem}
+.series a{flex:1 1 11rem;text-decoration:none;color:var(--ink2);padding:.55rem .8rem;border:1px solid var(--line);border-radius:10px;background:var(--panel);line-height:1.3}
+.series a b{display:block;color:var(--ink3);font-weight:500;font-size:.76rem}
+.series a[aria-current]{border-color:var(--ink);color:var(--ink);box-shadow:inset 0 -3px 0 var(--ink)}
+.series a:hover{border-color:var(--ink3)}
+
+.hero{padding:3.2rem 0 1rem}
+h1{font-family:var(--sans);font-weight:700;font-size:clamp(2.1rem,6vw,3.5rem);line-height:1.04;letter-spacing:-.03em;margin:0 0 1.2rem;text-wrap:balance}
+.lede{font-size:1.22rem;line-height:1.55;color:var(--ink2);margin:0}
+h2{font-family:var(--sans);font-weight:700;font-size:1.65rem;line-height:1.18;letter-spacing:-.018em;margin:4.5rem auto 1rem;display:flex;gap:.75rem;align-items:baseline;text-wrap:balance}
+h2 .n{flex:none;font-size:.95rem;font-weight:600;color:var(--bg);background:var(--ink);width:1.75rem;height:1.75rem;border-radius:50%;display:inline-grid;place-items:center;transform:translateY(-.15rem)}
+h3{font-family:var(--sans);font-weight:650;font-size:1.1rem;margin:2.4rem auto .4rem;letter-spacing:-.005em}
+p{margin:1rem auto}
+a{color:var(--base)}
+strong{font-weight:650}
+.q{font-size:1.18rem;line-height:1.5;border-left:3px solid var(--ink);padding:.1rem 0 .1rem 1.1rem;margin:1.8rem auto;font-style:italic}
+
+/* colour is vocabulary: each quantity keeps one colour in prose, maths and figures */
+.w{font-family:var(--sans);font-weight:650;font-size:.94em;white-space:nowrap}
+.w.reward{color:var(--reward)}.w.base{color:var(--base)}.w.pos{color:var(--pos)}.w.neg{color:var(--neg)}
+.w.grpo{color:var(--grpo)}.w.dr{color:var(--dr)}
+.legend{display:flex;flex-wrap:wrap;gap:.5rem 1.4rem;font-family:var(--sans);font-size:.86rem;color:var(--ink2);margin:1.6rem auto 0;padding:.9rem 0 0;border-top:1px solid var(--line)}
+.legend i{display:inline-block;width:.75rem;height:.75rem;border-radius:3px;margin-right:.4rem;vertical-align:-.05rem}
+
+.wordeq{font-family:var(--sans);font-weight:650;font-size:clamp(1.05rem,3.4vw,1.5rem);text-align:center;margin:2rem auto;line-height:1.5}
+.wordeq span{white-space:nowrap}
+.math{overflow-x:auto;overflow-y:hidden;margin:1.4rem auto;padding:.2rem 0}
+
+figure{margin:2.2rem auto;padding:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1.1rem 1.1rem .9rem}
+.panel>svg{display:block;width:100%;height:auto}
+figcaption{font-family:var(--sans);font-size:.86rem;line-height:1.5;color:var(--ink2);margin:.75rem auto 0;max-width:41rem}
+.ctl{display:flex;flex-wrap:wrap;gap:.6rem 1.2rem;align-items:center;font-family:var(--sans);font-size:.86rem;color:var(--ink2);margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--line)}
+.ctl label{display:flex;gap:.55rem;align-items:center}
+.ctl output,.read{font-variant-numeric:tabular-nums;color:var(--ink);font-weight:600}
+.read{font-family:var(--sans);font-size:.92rem;font-weight:500;margin:.7rem 0 0;min-height:2.8em;line-height:1.45}
+input[type=range]{accent-color:var(--ink);width:9.5rem;max-width:42vw}
+button{font-family:var(--sans);font-size:.86rem;font-weight:600;color:var(--ink);background:var(--panel);border:1px solid var(--ink3);border-radius:8px;padding:.42rem .85rem;cursor:pointer}
+button:hover{border-color:var(--ink)}
+button.go{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.seg{display:inline-flex;border:1px solid var(--ink3);border-radius:8px;overflow:hidden}
+.seg button{border:0;border-radius:0;border-left:1px solid var(--line)}
+.seg button:first-child{border-left:0}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+button:focus-visible,input:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--base);outline-offset:2px}
+svg text{font-family:var(--sans);fill:var(--ink2);font-size:13px}
+svg .num{font-variant-numeric:tabular-nums}
+
+.take{background:var(--wash);border-radius:14px;padding:1.1rem 1.3rem 1.2rem;margin:2.4rem auto}
+.take h3{margin:0 0 .3rem;font-size:.84rem;color:var(--ink3);font-weight:600}
+.take p+p{margin-top:.7rem}
+.take p{margin:.3rem 0 0;font-family:var(--sans);font-size:1.06rem;line-height:1.5;font-weight:500}
+details.deep{border:1px solid var(--line);border-radius:12px;background:var(--panel);margin:1.8rem auto;font-size:.95rem}
+details.deep summary{cursor:pointer;font-family:var(--sans);font-weight:600;font-size:.92rem;padding:.8rem 1.1rem;list-style:none;display:flex;gap:.6rem;align-items:center}
+details.deep summary::-webkit-details-marker{display:none}
+details.deep summary::before{content:"+";font-size:1.2rem;line-height:1;width:1rem;color:var(--ink3)}
+details.deep[open] summary::before{content:"–"}
+details.deep summary small{font-weight:500;color:var(--ink3);font-size:.86rem}
+details.deep .in{padding:0 1.1rem 1rem;border-top:1px solid var(--line)}
+
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-family:var(--sans);font-size:.9rem;line-height:1.45;min-width:34rem}
+th,td{text-align:left;vertical-align:top;padding:.7rem .8rem;border-bottom:1px solid var(--line)}
+thead th{font-weight:650;border-bottom:2px solid var(--ink)}
+tbody th{font-weight:600;color:var(--ink2);width:24%}
+.chip{display:inline-block;font-family:var(--sans);font-size:.76rem;font-weight:650;padding:.12rem .55rem;border-radius:99px;border:1.5px solid currentColor;white-space:nowrap}
+.chip.ok{color:var(--pos)}.chip.mid{color:var(--reward)}.chip.no{color:var(--neg)}
+
+.check{list-style:none;padding:0;margin:0;font-family:var(--sans)}
+.check li{display:grid;grid-template-columns:8.2rem 6.2rem 1fr;gap:.4rem 1rem;padding:.85rem 0;border-bottom:1px solid var(--line);font-size:.92rem;line-height:1.5;align-items:start}
+.check li:last-child{border-bottom:0}
+.check li b{font-weight:650}
+.check li span.why{color:var(--ink2)}
+@media(max-width:640px){.check li{grid-template-columns:1fr auto}.check li span.why{grid-column:1/-1}}
+
+.final{display:grid;gap:.9rem;margin:2rem auto}
+.final div{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:1rem 1.2rem}
+.final h3{margin:0 0 .3rem;font-size:1rem}
+.final p{margin:0;font-size:.98rem}
+.next{display:block;max-width:41rem;margin:3.5rem auto 0;padding:1.1rem 1.3rem;border-radius:14px;background:var(--ink);color:var(--bg);text-decoration:none;font-family:var(--sans)}
+.next small{display:block;opacity:.7;font-size:.82rem}
+.next b{font-size:1.15rem}
+footer{max-width:41rem;margin:2.5rem auto 0;font-family:var(--sans);font-size:.8rem;color:var(--ink3)}
+@media(max-width:560px){body{font-size:17px}.panel{padding:.7rem .6rem}h2{font-size:1.4rem}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media(max-width:680px){.panel{overflow-x:auto}.panel>svg{min-width:640px}}
+
+
+</style>
+</head>
+<body>
+<nav class="series" aria-label="The three parts of this tutorial">
+<a href="section1.html" aria-current="page"><b>Part 1</b>Why must the baseline go to zero?</a>
+<a href="section2.html"><b>Part 2</b>Are these really RL algorithms?</a>
+<a href="section3.html"><b>Part 3</b>Do they work on classic RL problems?</a>
+<a href="section4.html"><b>Part 4</b>A simpler mental model</a>
+</nav>
+<main>
+<span style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">\(\definecolor{cRw}{RGB}{181,122,0}\definecolor{cBs}{RGB}{43,107,224}\definecolor{cSg}{RGB}{18,133,93}\definecolor{cGp}{RGB}{116,72,212}\)</span>
+<header class="hero">
+  <h1>Why must the baseline's expectation go to zero?</h1>
+  <p class="lede">A policy-gradient learner scores each attempt and subtracts a baseline before learning from it. This page derives the one condition that subtraction must satisfy, then checks Dr. GRPO and GRPO against it, line by line.</p>
+  <div class="legend" aria-label="Colour key used on this page">
+    <span><i style="background:var(--reward)"></i>reward \(r\)</span>
+    <span><i style="background:var(--base)"></i>baseline \(b\)</span>
+    <span><i style="background:var(--pos)"></i>weight \(w = r - b\), positive</span>
+    <span><i style="background:var(--neg)"></i>weight, negative</span>
+  </div>
+</header>
+
+<h2 id="why"><span class="n">1</span>Why subtract anything?</h2>
+
+<p>A student's essays usually score about 7 out of 10. Today's essay scores 7. That is what was going to happen anyway, so it carries no news. An 8.3 does: whatever was different today is worth repeating. So does a 5.6.</p>
+<p>The informative part of a score is the gap between what happened and what was expected. The expectation is the <span class="w base">baseline</span> \(\bs{b}\). The gap is what the model should learn from. Call it the <span class="w pos">weight</span> \(\sg{w}\), because it is the number that will multiply each response in the update:</p>
+
+<div class="math">\[ \sg{w} \;=\; \rw{r} - \bs{b} \]</div>
+
+<p>Below, a model has answered one prompt eight times and a grader has given each response a score from 0 to 10. These eight scores are the running example for the whole page.</p>
+
+<figure>
+  <div class="panel">
+    <svg id="f1" viewBox="0 0 760 300" role="img" aria-label="Eight rewards shown as bars, split into the baseline and the weight"></svg>
+    <p class="read" id="f1r"></p>
+    <div class="ctl">
+      <div class="seg" id="f1seg"><button data-v="0" aria-pressed="true">Weight = r</button><button data-v="1" aria-pressed="false">Weight = r − b</button></div>
+      <label>Add a constant to every score <input type="range" id="f1g" min="0" max="6" step="0.5" value="0"><output id="f1go">+0</output></label>
+    </div>
+  </div>
+  <figcaption>The number under each bar is the weight that response gets in the update. Add a constant to every score: with weight \(r\), all eight weights grow, although no response improved relative to the others. With weight \(r-b\) and \(b\) set to the group mean, the weights do not move.</figcaption>
+</figure>
+
+<h3>Where the weight is used</h3>
+<p>Call the prompt \(q\). The model, with parameters \(\theta\), gives response \(o\) to that prompt with probability \(\pi_\theta(o\mid q)\). Everything on this page concerns one fixed prompt, so \(q\) is dropped from the notation and the probability is written \(\pi_\theta(o)\). It reappears only where a formula needs it. Training wants to raise the expected reward:</p>
+
+<div class="math">\[ J(\theta) \;=\; \E_{o\sim\pi_\theta}\big[\rw{r(o)}\big] \;=\; \sum_o \pi_\theta(o)\,\rw{r(o)} \]</div>
+
+<p>Differentiate, and use \(\nabla\pi = \pi\,\nabla\log\pi\) to turn the result back into an expectation that can be estimated by sampling:</p>
+
+<div class="math">\[ \nabla J \;=\; \sum_o \nabla\pi_\theta(o)\,\rw{r(o)} \;=\; \sum_o \pi_\theta(o)\,\nabla\log\pi_\theta(o)\,\rw{r(o)} \;=\; \E\big[\,\rw{r(o)}\;g(o)\,\big] \]</div>
+
+<div class="math">\[ \text{where}\qquad g(o) \;:=\; \nabla_\theta\log\pi_\theta(o) \]</div>
+
+<p>\(g(o)\) is called the <strong>score function</strong>. It is the direction in parameter space that makes response \(o\) more likely. So the gradient says: sample responses, and move along each one's \(g\), weighted by its reward.</p>
+
+<p>The expectation cannot be computed exactly, because it runs over every possible response. Replace it with an average over \(G\) sampled responses \(o_1,\dots,o_G\) with rewards \(\rw{r_1},\dots,\rw{r_G}\):</p>
+
+<div class="math">\[ \widehat{\nabla J}_{b=0} \;=\; \frac{1}{G}\sum_{i=1}^{G}\rw{r_i}\;g(o_i), \qquad \E\big[\widehat{\nabla J}_{b=0}\big] = \nabla J \]</div>
+
+<p>Two pieces of notation. The hat means "an estimate of", so \(\widehat{\nabla J}\) is an estimate of the gradient \(\nabla J\) built from samples. The subscript \(b=0\) says that nothing has been subtracted from the rewards.</p>
+
+<p>This estimate has no baseline in it. It is the "Weight = r" setting in the figure above, and the figure shows its weakness: the weights are large and nearly equal, so most of each one is the part all responses share. The essay example suggests the repair, which is to weight by \(\rw{r}-\bs{b}\) instead. But \(\nabla J = \E[\rw{r}\,g]\) says nothing about a baseline. Before using one, we have to check that it is allowed.</p>
+
+<div class="take"><h3>Takeaway</h3><p>The gradient of expected reward is \(\E[r\,g(o)]\): move along each sampled response's score function, weighted by its reward. A baseline would change the weight from \(r\) to \(r-b\). Whether that still gives the gradient is the next question.</p></div>
+
+<h2 id="zero"><span class="n">2</span>Why must the expectation be zero?</h2>
+
+<p>Start with the exact gradient, before any sampling. Put the baseline inside the expectation, replacing \(\rw{r}\) by \(\rw{r}-\bs{b}\), and split the result:</p>
+
+<div class="math">\[ \E\big[(\rw{r}-\bs{b})\,g(o)\big] \;=\; \underbrace{\E\big[\rw{r}\,g(o)\big]}_{=\;\nabla J} \;-\; \underbrace{\E\big[\bs{b}\,g(o)\big]}_{\text{must be } 0} \]</div>
+
+<p>The first term is the true gradient. So \(\nabla J = \E[(\rw{r}-\bs{b})\,g(o)]\) exactly when the second term vanishes. That is the zero in this page's title:</p>
+
+<div class="math">\[ \textbf{Unbiasedness condition:}\qquad \E\big[\,\bs{b}\;g(o)\,\big] \;=\; 0 \]</div>
+
+<h3>Why it holds for a constant baseline</h3>
+<p>The score function has mean zero under the model's own sampling, because probabilities sum to one:</p>
+
+<div class="math">\[ \E_{o\sim\pi}\big[g(o)\big] \;=\; \sum_o \pi(o)\,\frac{\nabla\pi(o)}{\pi(o)} \;=\; \nabla\sum_o \pi(o) \;=\; \nabla 1 \;=\; 0 \]</div>
+
+<p>If \(\bs{b}\) is the same number whichever response is sampled, it factors out: \(\E[\bs{b}\,g(o)] = \bs{b}\,\E[g(o)] = 0\). If \(\bs{b}\) changes with the sampled response, it cannot be factored out and the term survives. Since \(\E[g]=0\), the condition is the same as saying \(\operatorname{Cov}(\bs{b},\,g)=0\): <strong>a baseline is valid exactly when it is uncorrelated with the score function.</strong></p>
+
+<p>A two-response example makes this concrete. The model gives response X with probability \(p=0.3\) and Y with probability \(0.7\), controlled by one parameter \(\theta\) with \(p=\operatorname{sigmoid}(\theta)\). Then \(g(X) = 1-p = +0.7\) and \(g(Y) = -p = -0.3\).</p>
+
+<div class="math">\[ \begin{aligned}
+\text{mean of } g: &\quad 0.3(+0.7) + 0.7(-0.3) = 0\\[2pt]
+\bs{b}=5 \text{ for both}: &\quad 0.3(5)(+0.7) + 0.7(5)(-0.3) = 1.05 - 1.05 = 0\\[2pt]
+\bs{b}=6 \text{ for X},\ 3 \text{ for Y}: &\quad 0.3(6)(+0.7) + 0.7(3)(-0.3) = 1.26 - 0.63 = +0.63
+\end{aligned} \]</div>
+
+<figure>
+  <div class="panel">
+    <svg id="f3" viewBox="0 0 760 250" role="img" aria-label="Sampled values of b times g piled on a number line, with their running mean"></svg>
+    <p class="read" id="f3r"></p>
+    <div class="ctl">
+      <div class="seg" id="f3seg"><button data-v="0" aria-pressed="true">b = 5 for both</button><button data-v="1" aria-pressed="false">b = 6 for X, 3 for Y</button></div>
+      <button class="go" id="f3run">Draw 2,000 samples</button>
+    </div>
+  </div>
+  <figcaption>Each sample adds one value of \(b\cdot g(o)\) to the line. The triangle is the running mean, the estimate of \(\E[b\,g]\). It settles at 0 for the constant baseline and at +0.63 for the one that depends on the response, matching the arithmetic above.</figcaption>
+</figure>
+
+<h3>From the expectation to the sample estimate</h3>
+<p>With a baseline that meets the condition, the gradient can be written with the baseline inside it, and then estimated from \(G\) samples exactly as before:</p>
+
+<div class="math">\[ \nabla J \;=\; \E\big[(\rw{r}-\bs{b})\,g(o)\big] \]</div>
+<div class="math">\[ \widehat{\nabla J} \;=\; \frac{1}{G}\sum_{i=1}^{G}\big(\rw{r_i} - \bs{b}\big)\,g(o_i) \;=\; \frac{1}{G}\sum_{i=1}^{G}\sg{w_i}\;g(o_i) \]</div>
+
+<p>For a baseline that is a fixed number, \(\E[\widehat{\nabla J}]=\nabla J\), the same as for \(\widehat{\nabla J}_{b=0}\). One caution for later. In practice \(\bs{b}\) is often computed from the same \(G\) samples. Then it is not a fixed number, and the condition has to be checked again for the estimator itself. Sections 3 and 4 do that for Dr. GRPO and GRPO.</p>
+
+<h3>A second, weaker zero: centring</h3>
+<p>The weight itself has expectation \(\E[\sg{w}] = \E[\rw{r}] - \bs{b}\). That is zero only for one choice of baseline, the expected reward for this prompt:</p>
+
+<div class="math">\[ \textbf{Centring:}\qquad \E[\sg{w}] = 0 \;\iff\; \bs{b} = \E_{o\sim\pi}[\rw{r(o)}] =: V \]</div>
+
+<p>With that particular baseline the weight has a name. \(A(o) := \rw{r(o)} - V\) is the <strong>advantage</strong> of response \(o\): how much better it is than the policy's average. The advantage has mean zero by definition. So centring can be read as: choose \(\bs{b}\) so that the weight <em>is</em> the advantage. For any other \(\bs{b}\), the weight is the advantage plus a constant offset.</p>
+
+<p>Centring is not needed for unbiasedness. Any constant \(\bs{b}\) gives the right gradient on average. What centring controls is noise. Write \(\bs{b} = V - c\), so every weight is \(\sg{w} = A + c\). The estimator gains the term \(\frac{c}{G}\sum_i g(o_i)\), which has mean zero but does not vanish for finite \(G\). It pushes towards whatever happened to be sampled.</p>
+<p>The figure isolates that term. Four answers all earn reward \(r = 1\), so \(V=1\), every advantage is zero, the true gradient is zero, and the model should not change. Each step samples one answer \(a\) and applies \(\theta \leftarrow \theta + 0.3\,(1-\bs{b})\,g(a)\).</p>
+
+<figure>
+  <div class="panel">
+    <svg id="f2" viewBox="0 0 760 290" role="img" aria-label="Probabilities of four equally rewarded answers over 400 update steps"></svg>
+    <p class="read" id="f2r"></p>
+    <div class="ctl">
+      <div class="seg" id="f2seg"><button data-v="-1" aria-pressed="false">b = 2, so w = −1</button><button data-v="0" aria-pressed="true">b = 1 = V, so w = A = 0</button><button data-v="1" aria-pressed="false">b = 0, so w = +1</button></div>
+      <button class="go" id="f2run">Run 400 steps</button>
+    </div>
+  </div>
+  <figcaption>Left: \(\pi(a)\) for the four answers now. Right: the same four probabilities over 400 steps. The rewards are identical in all three settings; only \(b\) changes.</figcaption>
+</figure>
+
+<p>With \(\sg{w}=+1\), each sampled answer is pushed up, which makes it more likely to be sampled and pushed up again. The policy collapses onto one arbitrary answer. With \(\sg{w}=-1\), each sampled answer is pushed down and the policy jitters. In both cases the expected update is zero, as the lemma promises. This is variance, not bias, and it is what an off-centre baseline costs.</p>
+
+<p class="q">We want learning to be driven by relative performance, not systematic offsets.</p>
+
+<div class="take"><h3>Takeaway</h3><p>Unbiasedness needs \(\E[b\,g(o)] = 0\), which holds when \(b\) does not vary with the sampled response. Centring, \(\E[w]=0\), needs \(b = \E[r] = V\), and then the weight is the advantage \(A = r - V\). The first decides whether the update points the right way. The second decides how noisy it is.</p></div>
+
+<h2 id="dr"><span class="n">3</span>Dr. GRPO, checked against both</h2>
+
+<p>The ideal baseline \(V=\E[r]\) is unknown. Dr. GRPO estimates it from the samples it already has: the mean reward of the group of \(G\) responses to the prompt.</p>
+
+<div class="math">\[ \bs{\bar r} = \frac{1}{G}\sum_{j=1}^{G}\rw{r_j}, \qquad \sg{\hat A_i} = \rw{r_i} - \bs{\bar r}, \qquad \widehat{\nabla J}_{\text{Dr}} = \frac{1}{G}\sum_{i=1}^{G}\big(\rw{r_i} - \bs{\bar r}\big)\,g(o_i) \]</div>
+
+<p>As before, the hat means "an estimate of". \(\bs{\bar r}\) estimates \(V\), so \(\sg{\hat A_i}\) estimates the advantage \(A(o_i) = r_i - V\).</p>
+
+<p>A response is written one token at a time. Write \(o_{i,t}\) for token \(t\) of response \(i\), \(o_{i,&lt;t}\) for the tokens of that response before it, and \(|o_i|\) for the number of tokens. Each token is drawn given the prompt \(q\) and the tokens so far, so the probability of the whole response is a product:</p>
+
+<div class="math">\[ \pi_\theta(o_i) \;=\; \pi_\theta(o_i\mid q) \;=\; \prod_{t=1}^{|o_i|}\pi_\theta\big(o_{i,t}\mid q,\,o_{i,&lt;t}\big) \]</div>
+
+<p>Taking the logarithm turns the product into a sum, so the score function of a response is a sum over its tokens:</p>
+
+<div class="math">\[ g(o_i) \;=\; \nabla_\theta\log\pi_\theta(o_i) \;=\; \sum_{t=1}^{|o_i|}\nabla_\theta\log\pi_\theta\big(o_{i,t}\mid q,\,o_{i,&lt;t}\big) \]</div>
+
+<p>Dr. GRPO uses that sum as it is.</p>
+
+<figure>
+  <div class="panel">
+    <svg id="f4" viewBox="0 0 760 335" role="img" aria-label="Eight rewards, their group mean, and the resulting advantage estimates"></svg>
+    <p class="read" id="f4r"></p>
+    <div class="ctl">
+      <label>Reward of the selected response <input type="range" id="f4s" min="0" max="10" step="0.1" value="8.3"><output id="f4so">8.3</output></label>
+      <label><input type="checkbox" id="f4loo"> Also show \(r_i - \bar r_{-i}\)</label>
+    </div>
+  </div>
+  <figcaption>Top: \(r_i\) and the group mean \(\bar r\). Bottom: \(\hat A_i = r_i - \bar r\). Click any response to select it, then change its reward. Notice that moving one reward moves \(\bar r\), and therefore every other \(\hat A_j\) too.</figcaption>
+</figure>
+
+<h3>Centring</h3>
+<p>It holds exactly, in every group and not only on average: \(\sum_i \sg{\hat A_i} = \sum_i \rw{r_i} - G\,\bs{\bar r} = 0\).</p>
+
+<h3>Unbiasedness</h3>
+<p>The condition asked for a baseline that does not vary with the sampled response. \(\bs{\bar r}\) contains \(\rw{r_i}\), so it does vary with \(o_i\). The figure shows this: change one reward and its own baseline moves. Separate that reward out. Let \(\bs{\bar r_{-i}}\) be the mean of the other \(G-1\) rewards. Then</p>
+
+<div class="math">\[ \bs{\bar r} = \frac{\rw{r_i} + (G-1)\,\bs{\bar r_{-i}}}{G} \quad\Longrightarrow\quad \rw{r_i} - \bs{\bar r} \;=\; \frac{G-1}{G}\,\big(\rw{r_i} - \bs{\bar r_{-i}}\big) \]</div>
+
+<p>The responses are sampled independently, so \(\bs{\bar r_{-i}}\) is independent of \(o_i\) and passes the condition: \(\E[\bs{\bar r_{-i}}\,g(o_i)] = \E[\bs{\bar r_{-i}}]\cdot\E[g(o_i)] = 0\). Therefore</p>
+
+<div class="math">\[ \E\big[\widehat{\nabla J}_{\text{Dr}}\big] \;=\; \frac{G-1}{G}\Big(\E\big[\rw{r}\,g(o)\big] - 0\Big) \;=\; \frac{G-1}{G}\,\nabla J \]</div>
+
+<p>The expected update is the true gradient times a fixed number: 7/8 when \(G=8\). The direction is exact. The length is absorbed by the learning rate. Tick the box in the figure to see the same fact: every filled bar is 7/8 of its outline.</p>
+
+<h3>Assumptions</h3>
+<p>The derivation used three. The \(G\) responses are independent samples from \(\pi_\theta\) for the same prompt. Each \(r_i\) depends only on \(o_i\), not on the other responses. And the \(\theta\) being differentiated is the \(\theta\) that produced the samples. The last is exact on the first gradient step for a batch. Later steps reuse the samples through a clipped probability ratio \(\pi_\theta/\pi_{\text{old}}\), which keeps it approximately true.</p>
+
+<div class="take"><h3>Takeaway</h3><p>Dr. GRPO: \(b=\bar r\). Centred exactly. Unbiased up to the constant \((G-1)/G\), because \(r_i-\bar r\) is a rescaled copy of the leave-one-out estimate \(r_i - \bar r_{-i}\).</p></div>
+
+<h2 id="grpo"><span class="n">4</span>GRPO, checked against both</h2>
+
+<p>GRPO uses the same group mean and then applies two more operations. It divides \(\sg{\hat A_i}\) by the group's standard deviation \(\gp{\sigma}\), and it averages the token-level score terms over the response length \(\gp{|o_i|}\) where Dr. GRPO sums them.</p>
+
+<div class="math">\[ \frac{\sg{\hat A_i}}{\gp{\sigma}} = \frac{\rw{r_i} - \bs{\bar r}}{\gp{\sigma}},\qquad \gp{\sigma} = \sqrt{\tfrac{1}{G}\textstyle\sum_j (\rw{r_j} - \bs{\bar r})^2} \]</div>
+<div class="math">\[ \begin{aligned} \widehat{\nabla J}_{\text{GRPO}} \;&=\; \frac{1}{G}\sum_{i=1}^{G}\,\gp{\frac{1}{|o_i|}}\sum_{t=1}^{|o_i|}\frac{\sg{\hat A_i}}{\gp{\sigma}}\;\nabla\log\pi_\theta(o_{i,t}\mid q,o_{i,&lt;t}) \\[4pt] &=\; \frac{1}{G}\sum_{i=1}^{G}\frac{\rw{r_i}-\bs{\bar r}}{\gp{\sigma\,|o_i|}}\;g(o_i) \end{aligned} \]</div>
+
+<p>(Both methods also wrap this in a clipped ratio, and GRPO adds a KL penalty. Neither changes the analysis here.)</p>
+
+<h3>Centring</h3>
+<p>It still holds exactly. \(\sum_i \sg{\hat A_i}/\gp{\sigma} = \frac{1}{\gp{\sigma}}\sum_i(\rw{r_i}-\bs{\bar r}) = 0\).</p>
+
+<h3>Unbiasedness: the two extra factors</h3>
+<p>Compared with Dr. GRPO, response \(i\)'s weight is multiplied by \(1/(\gp{\sigma}\,\gp{|o_i|})\). A constant multiplier would be harmless, as \((G-1)/G\) was. Neither of these is constant.</p>
+
+<p><strong>The factor \(1/\gp{\sigma}\) varies from prompt to prompt.</strong> The slider rescales how far apart the eight rewards are, keeping their order and their mean.</p>
+
+<figure>
+  <div class="panel">
+    <svg id="f5" viewBox="0 0 760 300" role="img" aria-label="Advantage estimates before and after division by the group standard deviation"></svg>
+    <p class="read" id="f5r"></p>
+    <div class="ctl"><label>Spread of the eight rewards <input type="range" id="f5k" min="0.1" max="3" step="0.1" value="1"><output id="f5ko">×1.0</output></label></div>
+  </div>
+  <figcaption>Top row: \(r_i - \bar r\), in reward points. Bottom row: \((r_i-\bar r)/\sigma\), in standard deviations. The top row shrinks as the rewards bunch together. The bottom row does not change at all.</figcaption>
+</figure>
+
+<p>A prompt where the eight responses scored within a few tenths of each other produces the same size update as one where they ranged over six points. Write \(J_q\) for the expected reward on prompt \(q\) alone, and \(\gp{\sigma_q}\) for that prompt's reward spread. Averaged over prompts, the expected update is roughly</p>
+
+<div class="math">\[ \E\big[\widehat{\nabla J}\big] \;\approx\; \E_q\!\Big[\frac{1}{\gp{\sigma_q}}\,\nabla J_q\Big] \quad\text{in place of}\quad \E_q\big[\nabla J_q\big] \]</div>
+
+<p>so prompts are reweighted by \(1/\gp{\sigma_q}\). The prompts with the smallest spread are those the model handles almost uniformly well or uniformly badly, and they get the largest weight. (It is "roughly" because \(\gp{\sigma}\) also contains \(r_i\), so within a prompt it is not quite a constant either.)</p>
+
+<p><strong>The factor \(1/\gp{|o_i|}\) varies from response to response.</strong> This is the more serious one, because it depends on the very response being weighted.</p>
+
+<figure>
+  <div class="panel">
+    <svg id="f6" viewBox="0 0 760 270" role="img" aria-label="Weights on four responses with and without division by length"></svg>
+    <p class="read" id="f6r"></p>
+    <div class="ctl"><label>Length of the long responses <input type="range" id="f6l" min="20" max="400" step="10" value="200"><output id="f6lo">200 tokens</output></label></div>
+  </div>
+  <figcaption>Four responses with \(\hat A_i = +1, +1, -1, -1\). Two are 20 tokens long; two have the length set by the slider. Each column shows the weight multiplying \(g(o_i)\).</figcaption>
+</figure>
+
+<p>Section 1 showed \(\nabla\E[r(o)] = \E[r(o)\,g(o)]\). The same steps work for any function \(f\) of the response: \(\nabla\E[f(o)] = \E[f(o)\,g(o)]\). Treat the leave-one-out baseline \(b\) as fixed and take \(f = (r-b)/|o|\):</p>
+
+<div class="math">\[ \E\Big[\frac{\rw{r}-\bs{b}}{\gp{|o|}}\,g(o)\Big] \;=\; \nabla\,\E\Big[\frac{\rw{r}-\bs{b}}{\gp{|o|}}\Big] \;=\; \underbrace{\nabla\,\E\Big[\frac{\rw{r}}{\gp{|o|}}\Big]}_{\text{not }\nabla J} \;-\; \underbrace{\bs{b}\;\nabla\,\E\Big[\frac{1}{\gp{|o|}}\Big]}_{\text{baseline term, not }0} \]</div>
+
+<p>The baseline term no longer vanishes. The unbiasedness condition fails. What GRPO climbs is "reward above baseline, per token": a response above the baseline raises it most by being short, and a response below the baseline hurts it least by being long. Over training this favours short good answers and long bad ones.</p>
+
+<h3>Assumptions</h3>
+<p>GRPO would be unbiased under Dr. GRPO's assumptions plus two more: all responses have the same length, and every prompt has the same reward spread. Neither holds in practice.</p>
+<p>The two factors have practical motives. Dividing by \(\gp{\sigma}\) makes the update invariant to the grader's scale. Dividing by \(\gp{|o_i|}\) stops long responses dominating a batch. Both are bought with bias.</p>
+
+<details class="deep"><summary>Deeper mathematical note <small>pass/fail rewards as a special case</small></summary><div class="in">
+<p>Many graders return only \(r\in\{0,1\}\). If \(k\) of \(G\) responses pass, let \(f=k/G\) be the fraction that pass. Then \(\bar r = f\) and \(\sigma=\sqrt{f(1-f)}\). A passing response gets \(\hat A/\sigma=\sqrt{(1-f)/f}\) and a failing one \(-\sqrt{f/(1-f)}\). The prompt's multiplier \(1/\sigma\) is smallest, 2, at \(f=\tfrac12\) and grows without bound as \(f\to 0\) or \(1\): for \(G=8\) it is about 3.02 at \(k=1\) or \(7\). When \(k=0\) or \(k=G\), \(\sigma=0\) and every \(\hat A_i\) is zero in both methods (implementations add a small \(\varepsilon\) to the denominator).</p>
+<p>Why centring still matters for noise: with a constant offset \(c\), the extra term \(\tfrac{c}{G}\sum_i g(o_i)\) has variance \(c^2\,\E\lVert g\rVert^2/G\). The choice \(b=V\) removes it.</p>
+</div></details>
+
+<div class="take"><h3>Takeaway</h3><p>GRPO: same baseline, still centred. Its weight is \((r_i-\bar r)/(\sigma\,|o_i|)\). The \(1/\sigma\) factor reweights prompts. The \(1/|o_i|\) factor depends on the response itself, so \(\E[b\,g]\) no longer vanishes.</p></div>
+
+<h2 id="cmp"><span class="n">5</span>Side by side</h2>
+
+<div class="tbl wide"><table>
+<thead><tr><th></th><th><span class="w dr">Dr. GRPO</span></th><th><span class="w grpo">GRPO</span></th></tr></thead>
+<tbody>
+<tr><th>Baseline</th><td>\(\bar r\)</td><td>\(\bar r\)</td></tr>
+<tr><th>Weight on \(g(o_i)\)</th><td>\(r_i-\bar r\)</td><td>\(\dfrac{r_i-\bar r}{\sigma\,|o_i|}\)</td></tr>
+<tr><th>Centring, weights sum to 0</th><td><span class="chip ok">Yes</span> exactly, in every group</td><td><span class="chip ok">Yes</span> exactly, in every group</td></tr>
+<tr><th>Unbiasedness, \(\E[b\,g]=0\)</th><td><span class="chip ok">Yes</span> via \(\bar r_{-i}\)</td><td><span class="chip no">No</span> the term \(b\,\nabla\E[1/|o|]\) survives</td></tr>
+<tr><th>\(\E[\widehat{\nabla J}]\)</th><td>\(\dfrac{G-1}{G}\,\nabla J\)</td><td>\(\approx \E_q\big[\tfrac{1}{\sigma_q}\nabla\E[(r-b)/|o|]\big]\)</td></tr>
+<tr><th>Assumptions</th><td>Independent samples from \(\pi_\theta\); \(r_i\) depends only on \(o_i\)</td><td>The same, plus equal \(|o_i|\) and equal \(\sigma\) everywhere</td></tr>
+<tr><th>Bias</th><td>None beyond a constant scale</td><td>Across prompts (\(1/\sigma\)) and within a prompt (\(1/|o_i|\))</td></tr>
+</tbody></table></div>
+
+<div class="take"><h3>Remember this</h3>
+<p>The baseline approximates \(V=\E[r]\), the reward the model would have earned on this prompt anyway.</p>
+<p>Two expectations should be zero. \(\E[b\,g]=0\) keeps the update pointing along \(\nabla J\). \(\E[w]=0\) keeps offsets from adding noise, and holds when the weight \(w=r-b\) is the advantage \(A=r-V\).</p>
+<p>Both methods use \(b=\bar r\) and both are centred. Dr. GRPO stops there and is unbiased up to \((G-1)/G\). GRPO divides by \(\sigma\) and \(|o_i|\), and those two factors are its bias.</p></div>
+
+<a class="next" href="section2.html"><small>Next, part 2</small><b>Are GRPO and Dr. GRPO actually reinforcement learning?</b></a>
+
+<footer>GRPO: Shao et al., DeepSeekMath (2024). Dr. GRPO: Liu et al., Understanding R1-Zero-Like Training: A Critical Perspective (2025). All figures compute their numbers in the page.</footer>
+
+</main>
+<script>
+const NS='http://www.w3.org/2000/svg';
+const $=id=>document.getElementById(id);
+const C={ink:'#18212F',ink2:'#465166',ink3:'#788396',line:'#DBE1EA',wash:'#F0F3F8',panel:'#FFFFFF',
+  reward:'#B57A00',base:'#2B6BE0',pos:'#12855D',neg:'#CC3D64',grpo:'#7448D4',dr:'#0B8498'};
+const REDUCE=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function S(tag,attrs,parent,text){const e=document.createElementNS(NS,tag);
+  for(const k in attrs)e.setAttribute(k,attrs[k]);if(text!==undefined)e.textContent=text;if(parent)parent.appendChild(e);return e;}
+function wipe(svg){while(svg.lastChild)svg.removeChild(svg.lastChild);}
+const fmt=(v,d=2)=>(v>=0?'+':'−')+Math.abs(v).toFixed(d);
+function seg(id,cb){const box=$(id);box.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+  box.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));cb(b.dataset.v);}));}
+/* run fn(t in 0..1) over ms; instantly if the reader prefers reduced motion */
+function tween(ms,fn,done){if(REDUCE){fn(1);done&&done();return;}
+  const t0=performance.now();(function f(now){const t=Math.min(1,(now-t0)/ms);fn(t);t<1?requestAnimationFrame(f):(done&&done());})(t0);}
+const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+
+/* ---------- Figure 1: reward = expected + surprise ---------- */
+(function(){
+  const svg=$('f1'),R0=[6.4,7.6,6.9,8.3,5.6,7.1,7.9,6.2],mean0=R0.reduce((a,b)=>a+b)/8;
+  let mode=0;
+  function draw(){
+    const g=+$('f1g').value,y0=232,sc=13;wipe(svg);
+    $('f1go').textContent='+'+g;
+    const b=mean0+g;
+    S('line',{x1:30,y1:y0,x2:730,y2:y0,stroke:C.line},svg);
+    R0.forEach((r0,i)=>{
+      const r=r0+g,x=40+i*78,w=50,top=y0-r*sc;
+      if(mode===0){
+        S('rect',{x,y:top,width:w,height:r*sc,rx:3,fill:C.reward},svg);
+      }else{
+        const yb=y0-b*sc;
+        S('rect',{x,y:Math.max(top,yb),width:w,height:y0-Math.max(top,yb),fill:C.reward,opacity:.22},svg);
+        if(r>=b)S('rect',{x,y:top,width:w,height:yb-top,rx:2,fill:C.pos},svg);
+        else S('rect',{x:x+1,y:yb,width:w-2,height:top-yb,fill:'none',stroke:C.neg,'stroke-width':2,'stroke-dasharray':'4 3'},svg);
+      }
+      S('text',{x:x+w/2,y:Math.min(top,mode?y0-b*sc:top)-7,'text-anchor':'middle',class:'num',style:'fill:'+C.reward+';font-size:12px'},svg,r.toFixed(1));
+      const a=mode?r-b:r;
+      S('text',{x:x+w/2,y:y0+24,'text-anchor':'middle',class:'num',style:'font-weight:650;font-size:14px;fill:'+(a>=0?C.pos:C.neg)},svg,fmt(a,1));
+    });
+    S('text',{x:30,y:y0+52,style:'font-size:12px'},svg,mode?'weight on each response: w = r − b':'weight on each response: w = r');
+    if(mode){
+      const yb=y0-b*sc;
+      S('line',{x1:30,y1:yb,x2:655,y2:yb,stroke:C.base,'stroke-width':2,'stroke-dasharray':'7 5'},svg);
+      S('text',{x:664,y:yb+5,style:'font-weight:650;fill:'+C.base},svg,'b = '+b.toFixed(1));
+      $('f1r').textContent='Weight = r − b, with b = '+b.toFixed(1)+' (the group mean). The faded part of each bar is shared by all eight responses and is removed. The weights sum to zero.';
+    }else{
+      $('f1r').textContent='Weight = r. Every weight is positive (mean '+fmt(b,1)+'), so all eight responses are reinforced. They differ by at most 2.7, a small part of each weight.';
+    }
+  }
+  seg('f1seg',v=>{mode=+v;draw();});$('f1g').addEventListener('input',draw);draw();
+})();
+
+/* ---------- Figure 2: four equally good answers, drift under an offset ---------- */
+(function(){
+  const svg=$('f2'),COL=['#18212F','#3F5FA8','#7C8AA8','#B0BACD'],N=400;
+  let c=0,th,hist,run=0;
+  const soft=t=>{const m=Math.max(...t),e=t.map(v=>Math.exp(v-m)),z=e.reduce((a,b)=>a+b);return e.map(v=>v/z);};
+  function reset(){th=[0,0,0,0];hist=[soft(th)];}
+  function step(){const p=soft(th);let u=Math.random(),a=0;while(a<3&&u>p[a]){u-=p[a];a++;}
+    for(let k=0;k<4;k++)th[k]+=0.3*c*((k===a?1:0)-p[k]);hist.push(soft(th));}
+  function draw(){
+    wipe(svg);const p=hist[hist.length-1],y0=240,H=190;
+    S('line',{x1:30,y1:y0,x2:250,y2:y0,stroke:C.line},svg);
+    p.forEach((v,i)=>{const x=42+i*52;
+      S('rect',{x,y:y0-v*H,width:36,height:Math.max(v*H,1),rx:3,fill:COL[i]},svg);
+      S('text',{x:x+18,y:y0+18,'text-anchor':'middle'},svg,'ABCD'[i]);
+      S('text',{x:x+18,y:y0-v*H-6,'text-anchor':'middle',class:'num',style:'font-size:12px'},svg,Math.round(v*100)+'%');});
+    S('text',{x:30,y:24,style:'font-weight:600;fill:'+C.ink},svg,'π(a) now');
+    const X0=320,X1=730;
+    S('text',{x:X0,y:24,style:'font-weight:600;fill:'+C.ink},svg,'π(a) over 400 steps');
+    [0,.25,.5,.75,1].forEach(v=>{S('line',{x1:X0,y1:y0-v*H,x2:X1,y2:y0-v*H,stroke:v===.25?C.ink3:C.line,'stroke-dasharray':v===.25?'4 4':'none'},svg);
+      S('text',{x:X0-8,y:y0-v*H+4,'text-anchor':'end',class:'num',style:'font-size:11px'},svg,Math.round(v*100)+'%');});
+    for(let k=0;k<4;k++){
+      const pts=hist.map((h,t)=>(X0+t/N*(X1-X0)).toFixed(1)+','+(y0-h[k]*H).toFixed(1)).join(' ');
+      S('polyline',{points:pts,fill:'none',stroke:COL[k],'stroke-width':2.2,'stroke-linejoin':'round'},svg);}
+  }
+  function msg(done){
+    const p=hist[hist.length-1],mx=Math.max(...p),w='ABCD'[p.indexOf(mx)];
+    $('f2r').textContent=!done?'r = 1 for every answer. b = '+(1-c)+', so w = r − b = '+(c===0?'0':fmt(c,0))+' for every sample. Press Run.':
+      c===0?'w = 0 on every sample, so θ never moves. Correct: the true gradient is zero.':
+      c>0?'π('+w+') has drifted to '+Math.round(mx*100)+'%, although the true gradient is zero. Run again and a different answer may win.':
+      'The probabilities jittered around 25% for 400 steps. The true gradient is zero; all of this motion is noise.';
+  }
+  function go(){const id=++run;reset();
+    if(REDUCE){for(let i=0;i<N;i++)step();draw();msg(true);return;}
+    (function f(){if(id!==run)return;for(let i=0;i<4&&hist.length<=N;i++)step();draw();
+      hist.length<=N?requestAnimationFrame(f):msg(true);})();}
+  seg('f2seg',v=>{c=+v;run++;reset();draw();msg(false);});
+  $('f2run').addEventListener('click',go);reset();draw();msg(false);
+})();
+
+/* ---------- Figure 3: does the baseline's contribution balance at zero? ---------- */
+(function(){
+  const svg=$('f3'),p=.3;let mode=0,nx=0,ny=0,run=0;
+  const X=v=>90+(v+2)/7*580;
+  function vals(){return mode?[6*(1-p),3*(-p)]:[5*(1-p),5*(-p)];}
+  function draw(){
+    wipe(svg);const y0=175,[vx,vy]=vals(),n=nx+ny;
+    S('line',{x1:X(-2),y1:y0,x2:X(5),y2:y0,stroke:C.ink3},svg);
+    for(let v=-2;v<=5;v++){S('line',{x1:X(v),y1:y0,x2:X(v),y2:y0+(v===0?10:5),stroke:v===0?C.ink:C.ink3,'stroke-width':v===0?2:1},svg);
+      S('text',{x:X(v),y:y0+26,'text-anchor':'middle',class:'num',style:v===0?'font-weight:700;fill:'+C.ink:''},svg,v===0?'0':(v>0?'+':'−')+Math.abs(v));}
+    [[vx,nx,'o = X'],[vy,ny,'o = Y']].forEach(([v,k,lab])=>{
+      const h=k*.075;S('rect',{x:X(v)-22,y:y0-h-1,width:44,height:h+1,rx:3,fill:C.base,opacity:.85},svg);
+      S('text',{x:X(v),y:y0-h-22,'text-anchor':'middle',style:'font-weight:600;fill:'+C.ink},svg,lab);
+      S('text',{x:X(v),y:y0-h-7,'text-anchor':'middle',class:'num',style:'font-size:12px'},svg,'b·g = '+fmt(v,2)+',  '+k+' times');});
+    const m=n?(nx*vx+ny*vy)/n:0,off=Math.abs(m)>.3&&n>200;
+    if(n){S('path',{d:`M${X(m)} ${y0+34} l-10 16 h20 z`,fill:off?C.neg:C.ink},svg);
+      S('text',{x:X(m),y:y0+66,'text-anchor':'middle',class:'num',style:'font-weight:650;fill:'+(off?C.neg:C.ink)},svg,'mean of b·g = '+fmt(m,2));}
+    $('f3r').textContent=!n?'Press the button to sample o from π (X with probability 0.3, Y with probability 0.7).':
+      n<2000?'Sampling… mean of b·g so far = '+fmt(m,2):
+      mode?'Sample mean of b·g = '+fmt(m,2)+' (exact value +0.63), not 0. Subtracting this baseline shifts the expected update by that amount, towards X.':
+           'Sample mean of b·g = '+fmt(m,2)+' (exact value 0). A few large positive values balance many small negative ones, so subtracting this baseline leaves the expected update unchanged.';
+  }
+  function go(){const id=++run;nx=ny=0;
+    const add=()=>{Math.random()<p?nx++:ny++;};
+    if(REDUCE){for(let i=0;i<2000;i++)add();draw();return;}
+    (function f(){if(id!==run)return;for(let i=0;i<25&&nx+ny<2000;i++)add();draw();if(nx+ny<2000)requestAnimationFrame(f);})();}
+  seg('f3seg',v=>{mode=+v;run++;nx=ny=0;draw();});$('f3run').addEventListener('click',go);draw();
+})();
+
+/* ---------- Figure 4: Dr. GRPO group, graded rewards ---------- */
+(function(){
+  const svg=$('f4'),r=[6.4,7.6,6.9,8.3,5.6,7.1,7.9,6.2],G=8;let sel=3;
+  function draw(){
+    wipe(svg);const loo=$('f4loo').checked,mean=r.reduce((a,b)=>a+b)/G,yr=130,H=9.5,ya=250;
+    const ext=Math.max(...r.map(v=>Math.abs(v-(mean*G-v)/(G-1)))),sc=Math.min(24,56/ext);
+    S('text',{x:24,y:18,style:'font-weight:650;fill:'+C.reward},svg,'reward r');
+    S('text',{x:24,y:175,style:'font-weight:650;fill:'+C.ink},svg,'advantage estimate Â = r − r̄');
+    S('line',{x1:60,y1:yr,x2:650,y2:yr,stroke:C.line},svg);S('line',{x1:60,y1:ya,x2:650,y2:ya,stroke:C.ink3},svg);
+    r.forEach((v,i)=>{const x=78+i*72,w=44,a=v-mean,on=i===sel;
+      S('rect',{x,y:yr-Math.max(v*H,2),width:w,height:Math.max(v*H,2),rx:3,fill:C.reward,opacity:on?1:.75,stroke:on?C.ink:'none','stroke-width':2},svg);
+      S('text',{x:x+w/2,y:yr-6,'text-anchor':'middle',class:'num',style:'font-size:12px;font-weight:700;fill:#fff'},svg,v>=1.6?v.toFixed(1):'');
+      if(loo){const al=v-(mean*G-v)/(G-1);
+        S('rect',{x:x-4,y:al>=0?ya-al*sc:ya,width:w+8,height:Math.abs(al)*sc,fill:'none',stroke:C.base,'stroke-width':1.6,'stroke-dasharray':'4 3'},svg);}
+      S('rect',{x,y:a>=0?ya-a*sc:ya,width:w,height:Math.max(Math.abs(a)*sc,1),rx:2,fill:a>=0?C.pos:C.neg},svg);
+      S('text',{x:x+w/2,y:a>=0?ya+17:ya-7,'text-anchor':'middle',class:'num',style:'font-weight:650;fill:'+(a>=0?C.pos:C.neg)},svg,fmt(a,2));
+      S('text',{x:x+w/2,y:yr+17,'text-anchor':'middle',style:'font-size:12px;font-weight:'+(on?700:400)},svg,'o'+(i+1));
+      const hit=S('rect',{x:x-12,y:25,width:w+24,height:132,fill:'transparent',style:'cursor:pointer',tabindex:0,role:'button','aria-label':'Select response '+(i+1)},svg);
+      const pick=()=>{sel=i;$('f4s').value=r[i];draw();};hit.addEventListener('click',pick);
+      hit.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick();}});});
+    const ym=yr-mean*H;
+    S('line',{x1:60,y1:ym,x2:650,y2:ym,stroke:C.base,'stroke-width':2,'stroke-dasharray':'7 5'},svg);
+    S('text',{x:660,y:ym+5,class:'num',style:'font-weight:650;fill:'+C.base},svg,'r̄ = '+mean.toFixed(2));
+    $('f4so').textContent='o'+(sel+1)+': '+r[sel].toFixed(1);
+    const others=(mean*G-r[sel])/(G-1);
+    $('f4r').textContent='Σ Â = 0.00. For o'+(sel+1)+': r = '+r[sel].toFixed(1)+', r̄ = '+mean.toFixed(2)+', Â = '+fmt(r[sel]-mean,2)+'.'+
+      (loo?' Dashed outlines: r − r̄₋ᵢ, using the mean of the other seven ('+others.toFixed(2)+' for o'+(sel+1)+'). Outline = '+fmt(r[sel]-others,2)+'; filled = 7/8 of that = '+fmt((r[sel]-others)*7/8,2)+'.':'');
+  }
+  $('f4loo').addEventListener('change',draw);
+  $('f4s').addEventListener('input',e=>{r[sel]=+e.target.value;draw();});draw();
+})();
+
+/* ---------- Figure 5: dividing by the standard deviation ---------- */
+(function(){
+  const svg=$('f5'),r0=[6.4,7.6,6.9,8.3,5.6,7.1,7.9,6.2],m0=r0.reduce((a,b)=>a+b)/8;
+  function draw(){
+    wipe(svg);const s=+$('f5k').value;$('f5ko').textContent='×'+s.toFixed(1);
+    const r=r0.map(v=>m0+(v-m0)*s),sd=Math.sqrt(r.reduce((a,v)=>a+(v-m0)**2,0)/8),y1=104,y2=222,sc1=13,sc2=26;
+    S('text',{x:24,y:y1-8,style:'font-weight:650;fill:'+C.dr},svg,'r − r̄');
+    S('text',{x:24,y:y1+10,style:'font-size:12px'},svg,'reward points');
+    S('text',{x:24,y:y2-8,style:'font-weight:650;fill:'+C.grpo},svg,'(r − r̄) / σ');
+    S('text',{x:24,y:y2+10,style:'font-size:12px'},svg,'standard deviations');
+    S('line',{x1:150,y1:y1,x2:735,y2:y1,stroke:C.ink3},svg);S('line',{x1:150,y1:y2,x2:735,y2:y2,stroke:C.ink3},svg);
+    r.forEach((v,i)=>{const x=170+i*70,w=40,a=v-m0,b=a/sd;
+      S('text',{x:x+w/2,y:20,'text-anchor':'middle',class:'num',style:'font-size:12px;fill:'+C.reward},svg,'r = '+v.toFixed(1));
+      [[a,y1,C.dr,sc1],[b,y2,C.grpo,sc2]].forEach(([q,y,col,sc])=>{
+        S('rect',{x,y:q>=0?y-q*sc:y,width:w,height:Math.max(Math.abs(q)*sc,1),rx:2,fill:col,opacity:q>=0?1:.55},svg);
+        S('text',{x:x+w/2,y:q>=0?y+15:y-6,'text-anchor':'middle',class:'num',style:'font-size:12px;font-weight:600;fill:'+col},svg,fmt(q,2));});});
+    $('f5r').textContent='σ = '+sd.toFixed(2)+', so GRPO multiplies this prompt\'s Â values by 1/σ = '+(1/sd).toFixed(2)+'. '+
+      (sd<.5?'The responses barely differ, and GRPO still produces a full-size update from them.':sd>1.6?'The responses differ a lot, and GRPO scales the update down to the same size as any other prompt.':'');
+  }
+  $('f5k').addEventListener('input',draw);draw();
+})();
+
+/* ---------- Figure 6: dividing by length ---------- */
+(function(){
+  const svg=$('f6'),rows=[[1,0],[1,1],[-1,0],[-1,1]];
+  function draw(){
+    wipe(svg);const L=+$('f6l').value;$('f6lo').textContent=L+' tokens';
+    const cx1=480,cx2=640,hw=52;
+    S('text',{x:24,y:26,style:'font-weight:600;fill:'+C.ink},svg,'response');
+    S('text',{x:cx1,y:26,'text-anchor':'middle',style:'font-weight:650;fill:'+C.dr},svg,'weight = Â');
+    S('text',{x:cx2,y:26,'text-anchor':'middle',style:'font-weight:650;fill:'+C.grpo},svg,'weight = Â / |o|');
+    S('text',{x:cx1,y:42,'text-anchor':'middle',style:'font-size:12px'},svg,'Dr. GRPO');S('text',{x:cx2,y:42,'text-anchor':'middle',style:'font-size:12px'},svg,'GRPO (σ left out)');
+    [cx1,cx2].forEach(c=>S('line',{x1:c,y1:52,x2:c,y2:250,stroke:C.ink3},svg));
+    rows.forEach(([s,long],i)=>{const y=82+i*46,len=long?L:20,col=s>0?C.pos:C.neg;
+      S('text',{x:24,y:y+5,class:'num',style:'font-weight:600;fill:'+col},svg,'Â = '+fmt(s,0)+',');
+      S('rect',{x:108,y:y-8,width:Math.max(len*.45,6),height:16,rx:3,fill:C.ink3,opacity:.35},svg);
+      S('text',{x:108+Math.max(len*.45,6)+8,y:y+5,class:'num',style:'font-size:12px'},svg,'|o| = '+len);
+      [[cx1,1,s],[cx2,20/len,s/len]].forEach(([c,m,val],k)=>{const w=Math.max(hw*m,1.5);
+        S('rect',{x:s>0?c:c-w,y:y-10,width:w,height:20,rx:2,fill:col},svg);
+        S('text',{x:s>0?c+w+6:c-w-6,y:y+5,'text-anchor':s>0?'start':'end',class:'num',style:'font-size:12px;font-weight:600;fill:'+col},svg,k?fmt(val,4):fmt(val,0));});});
+    const f=L/20,ft=f%1?f.toFixed(1):f;
+    $('f6r').textContent=L===20?'All four responses have the same length, so 1/|o| is a constant and the two methods agree up to scale.':
+      'Under GRPO the '+L+'-token response with Â = +1 gets weight '+(1/L).toFixed(4)+', '+ft+'× smaller than the 20-token one (0.0500). The '+L+'-token response with Â = −1 is pushed down '+ft+'× less as well.';
+  }
+  $('f6l').addEventListener('input',draw);draw();
+})();
+
+</script>
+</body>
+</html>
