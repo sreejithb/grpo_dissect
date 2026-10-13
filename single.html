@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The algorithm that trains reasoning LLMs can't teach a robot to walk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']],
+  packages:{'[+]':['color']},
+  macros:{rw:['{\\color{cRw}{#1}}',1],bs:['{\\color{cBs}{#1}}',1],sg:['{\\color{cSg}{#1}}',1],
+          gp:['{\\color{cGp}{#1}}',1],E:'\\mathbb{E}'}},
+  loader:{load:['[tex]/color']},
+  svg:{fontCache:'global'},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code','svg']}};
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+:root{
+  --bg:#FAFBFD;--panel:#FFFFFF;--wash:#F0F3F8;--ink:#18212F;--ink2:#465166;--ink3:#788396;--line:#DBE1EA;
+  --reward:#B57A00;--base:#2B6BE0;--pos:#12855D;--neg:#CC3D64;--grpo:#7448D4;--dr:#0B8498;
+  --sans:"Schibsted Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --serif:"Literata",Georgia,"Times New Roman",serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--serif);font-size:18px;line-height:1.72}
+main{padding:0 1.25rem 5rem}
+main>*{max-width:41rem;margin-left:auto;margin-right:auto}
+main>figure,main>.wide{max-width:54rem}
+
+.series{display:flex;gap:.4rem;flex-wrap:wrap;max-width:54rem;margin:0 auto;padding:1.1rem 1.25rem;font-family:var(--sans);font-size:.83rem}
+.series a{flex:1 1 11rem;text-decoration:none;color:var(--ink2);padding:.55rem .8rem;border:1px solid var(--line);border-radius:10px;background:var(--panel);line-height:1.3}
+.series a b{display:block;color:var(--ink3);font-weight:500;font-size:.76rem}
+.series a[aria-current]{border-color:var(--ink);color:var(--ink);box-shadow:inset 0 -3px 0 var(--ink)}
+.series a:hover{border-color:var(--ink3)}
+
+.hero{padding:3.2rem 0 1rem}
+h1{font-family:var(--sans);font-weight:700;font-size:clamp(2.1rem,6vw,3.5rem);line-height:1.04;letter-spacing:-.03em;margin:0 0 1.2rem;text-wrap:balance}
+.lede{font-size:1.22rem;line-height:1.55;color:var(--ink2);margin:0}
+.meta{font-family:var(--sans);font-size:.86rem;color:var(--ink3);margin:1rem 0 0}
+.chain{display:flex;flex-wrap:wrap;gap:.3rem .55rem;font-family:var(--sans);font-size:.76rem;font-weight:650;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3);margin:1.3rem 0 0}
+.chain a{color:var(--ink2);text-decoration:none}
+.chain a:hover{color:var(--ink)}
+h2{font-family:var(--sans);font-weight:700;font-size:1.65rem;line-height:1.18;letter-spacing:-.018em;margin:4.5rem auto .6rem;display:flex;gap:.75rem;align-items:baseline;text-wrap:balance}
+h2 .n{flex:none;font-size:.95rem;font-weight:600;color:var(--bg);background:var(--ink);width:1.75rem;height:1.75rem;border-radius:50%;display:inline-grid;place-items:center;transform:translateY(-.15rem)}
+.sub{font-family:var(--sans);font-size:1.08rem;line-height:1.5;color:var(--ink2);margin:0 auto 1.6rem;padding-left:2.5rem}
+h3{font-family:var(--sans);font-weight:650;font-size:1.1rem;margin:2.4rem auto .4rem;letter-spacing:-.005em}
+p{margin:1rem auto}
+a{color:var(--base)}
+strong{font-weight:650}
+.q{font-size:1.18rem;line-height:1.5;border-left:3px solid var(--ink);padding:.1rem 0 .1rem 1.1rem;margin:1.8rem auto;font-style:italic}
+
+/* colour is vocabulary: each quantity keeps one colour in prose, maths and figures */
+.w{font-family:var(--sans);font-weight:650;font-size:.94em;white-space:nowrap}
+.w.reward{color:var(--reward)}.w.base{color:var(--base)}.w.pos{color:var(--pos)}.w.neg{color:var(--neg)}
+.w.grpo{color:var(--grpo)}.w.dr{color:var(--dr)}
+.legend{display:flex;flex-wrap:wrap;gap:.5rem 1.4rem;font-family:var(--sans);font-size:.86rem;color:var(--ink2);margin:1.6rem auto 0;padding:.9rem 0 0;border-top:1px solid var(--line)}
+.legend i{display:inline-block;width:.75rem;height:.75rem;border-radius:3px;margin-right:.4rem;vertical-align:-.05rem}
+.legend .lk{color:var(--ink3);font-size:.82rem}
+
+.cast{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1rem 1.3rem 1.1rem;margin:2rem auto;font-family:var(--sans);font-size:.92rem;line-height:1.5}
+.cast h4{margin:0 0 .7rem;font-size:.76rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)}
+.cast dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:.45rem 1.1rem}
+.cast dt{font-family:var(--serif);white-space:nowrap}
+.cast dd{margin:0;color:var(--ink2)}
+.cast dd b{color:var(--ink);font-weight:650}
+.cast dd em{color:var(--ink3);font-style:normal;font-size:.84rem}
+
+.wordeq{font-family:var(--sans);font-weight:650;font-size:clamp(1rem,3vw,1.3rem);text-align:center;margin:1.6rem auto;line-height:1.6;color:var(--ink)}
+.wordeq span{white-space:nowrap}
+.math{overflow-x:auto;overflow-y:hidden;margin:1.4rem auto;padding:.2rem 0}
+
+figure{margin:2.2rem auto;padding:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1.1rem 1.1rem .9rem}
+.panel>svg{display:block;width:100%;height:auto}
+figcaption{font-family:var(--sans);font-size:.86rem;line-height:1.5;color:var(--ink2);margin:.75rem auto 0;max-width:41rem}
+.ctl{display:flex;flex-wrap:wrap;gap:.6rem 1.2rem;align-items:center;font-family:var(--sans);font-size:.86rem;color:var(--ink2);margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--line)}
+.ctl label{display:flex;gap:.55rem;align-items:center}
+.ctl output,.read{font-variant-numeric:tabular-nums;color:var(--ink);font-weight:600}
+.read{font-family:var(--sans);font-size:.92rem;font-weight:500;margin:.7rem 0 0;min-height:2.8em;line-height:1.45}
+input[type=range]{accent-color:var(--ink);width:9.5rem;max-width:42vw}
+button{font-family:var(--sans);font-size:.86rem;font-weight:600;color:var(--ink);background:var(--panel);border:1px solid var(--ink3);border-radius:8px;padding:.42rem .85rem;cursor:pointer}
+button:hover{border-color:var(--ink)}
+button.go{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.seg{display:inline-flex;border:1px solid var(--ink3);border-radius:8px;overflow:hidden}
+.seg button{border:0;border-radius:0;border-left:1px solid var(--line)}
+.seg button:first-child{border-left:0}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+button:focus-visible,input:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--base);outline-offset:2px}
+svg text{font-family:var(--sans);fill:var(--ink2);font-size:13px}
+svg .num{font-variant-numeric:tabular-nums}
+
+.take{background:var(--wash);border-radius:14px;padding:1.1rem 1.3rem 1.2rem;margin:2.4rem auto}
+.take h3{margin:0 0 .3rem;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);font-weight:700}
+.take p+p{margin-top:.7rem}
+.take p{margin:.3rem 0 0;font-family:var(--sans);font-size:1.06rem;line-height:1.5;font-weight:500}
+.take.leave{border-left:4px solid var(--neg);border-radius:4px 14px 14px 4px}
+.take.leave h3{color:var(--neg)}
+details.deep{border:1px solid var(--line);border-radius:12px;background:var(--panel);margin:1.8rem auto;font-size:.95rem}
+details.deep summary{cursor:pointer;font-family:var(--sans);font-weight:600;font-size:.92rem;padding:.8rem 1.1rem;list-style:none;display:flex;gap:.6rem;align-items:center}
+details.deep summary::-webkit-details-marker{display:none}
+details.deep summary::before{content:"+";font-size:1.2rem;line-height:1;width:1rem;color:var(--ink3)}
+details.deep[open] summary::before{content:"–"}
+details.deep summary small{font-weight:500;color:var(--ink3);font-size:.86rem}
+details.deep .in{padding:0 1.1rem 1rem;border-top:1px solid var(--line)}
+details.deep .in figure{margin:1.6rem 0}
+details.deep .in .panel{padding:.9rem .8rem .7rem}
+
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-family:var(--sans);font-size:.9rem;line-height:1.45;min-width:34rem}
+th,td{text-align:left;vertical-align:top;padding:.7rem .8rem;border-bottom:1px solid var(--line)}
+thead th{font-weight:650;border-bottom:2px solid var(--ink)}
+tbody th{font-weight:600;color:var(--ink2);width:24%}
+.chip{display:inline-block;font-family:var(--sans);font-size:.76rem;font-weight:650;padding:.12rem .55rem;border-radius:99px;border:1.5px solid currentColor;white-space:nowrap}
+.chip.ok{color:var(--pos)}.chip.mid{color:var(--reward)}.chip.no{color:var(--neg)}
+
+.recap{list-style:none;padding:0;margin:1.5rem auto;font-family:var(--sans)}
+.recap li{display:grid;grid-template-columns:8rem 1fr;gap:.3rem 1rem;padding:.75rem 0;border-bottom:1px solid var(--line);font-size:.95rem;line-height:1.5}
+.recap li:last-child{border-bottom:0}
+.recap b{font-weight:700;letter-spacing:.05em;font-size:.78rem;text-transform:uppercase;color:var(--ink3);padding-top:.2rem}
+@media(max-width:560px){.recap li{grid-template-columns:1fr}}
+
+.next{display:block;max-width:41rem;margin:3.5rem auto 0;padding:1.1rem 1.3rem;border-radius:14px;background:var(--ink);color:var(--bg);text-decoration:none;font-family:var(--sans)}
+.next small{display:block;opacity:.7;font-size:.82rem}
+.next b{font-size:1.15rem}
+footer{max-width:41rem;margin:2.5rem auto 0;font-family:var(--sans);font-size:.8rem;color:var(--ink3)}
+@media(max-width:560px){body{font-size:17px}.panel{padding:.7rem .6rem}h2{font-size:1.4rem}.sub{padding-left:0}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media(max-width:680px){.panel{overflow-x:auto}.panel>svg{min-width:640px}}
+.score{display:grid;grid-template-columns:repeat(auto-fit,minmax(8.4rem,1fr));gap:.6rem}
+.score div{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:.9rem .6rem;text-align:center;font-family:var(--sans);display:grid;gap:.5rem;justify-items:center;align-content:start}
+.score b{font-weight:650;font-size:.95rem;line-height:1.25}
+h1 .cant{color:var(--neg)}
+@media(max-width:560px){.math mjx-container[display]{font-size:82%!important}}
+main>.rule{max-width:48rem;margin:3.2rem auto;padding:1.7rem 1rem;text-align:center;font-family:var(--sans);font-weight:700;font-size:clamp(1.55rem,4.4vw,2.4rem);line-height:1.18;letter-spacing:-.02em;color:#5B6578;border-top:2px solid #C3CAD5;border-bottom:2px solid #C3CAD5;text-wrap:balance}
+</style>
+</head>
+<body>
+<nav class="series" aria-label="This series">
+<a href="https://sreejithb.com/rl-policy-gradient/single"><b>Previously</b>Nobody invented PPO from scratch</a>
+<a href="#top" aria-current="page"><b>This post</b>GRPO can't teach a robot to walk</a>
+</nav>
+<main id="top">
+<span style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">\(\definecolor{cRw}{RGB}{181,122,0}\definecolor{cBs}{RGB}{43,107,224}\definecolor{cSg}{RGB}{18,133,93}\definecolor{cGp}{RGB}{116,72,212}\)</span>
+<header class="hero">
+  <h1>The algorithm that trains reasoning LLMs <span class="cant">can't</span> teach a robot to walk</h1>
+  <p class="lede">Not as well as PPO, anyway. There are two reasons. The first is a bias, and it has been fixed. The second is still open. Both come straight out of the one idea the last story turned on: subtract a baseline.</p>
+  <p class="meta">~15 min read · picks up where <a href="https://sreejithb.com/rl-policy-gradient/single">Nobody Invented PPO From Scratch</a> left off</p>
+  <nav class="chain" aria-label="Sections">
+    <a href="#rule">The rule</a><span>→</span><a href="#grpo">GRPO breaks it</a><span>→</span><a href="#dr">Dr. GRPO</a><span>→</span><a href="#noise">Not ready for control</a><span>→</span><a href="#llm">Why LLMs cope</a><span>→</span><a href="#evidence">The evidence</a>
+  </nav>
+  <div class="legend" aria-label="Colour key used in the equations on this page">
+    <span class="lk">Colours in the equations:</span>
+    <span><i style="background:var(--reward)"></i>return \(R\)</span>
+    <span><i style="background:var(--base)"></i>baseline \(b\)</span>
+    <span><i style="background:var(--grpo)"></i>what GRPO adds</span>
+  </div>
+</header>
+
+<aside class="cast">
+  <h4>The cast of symbols — mostly old friends, three newcomers</h4>
+  <dl>
+    <dt>\(\tau\)</dt><dd>a <b>trajectory</b>: one full episode of states and actions. For an LLM, one response to a prompt</dd>
+    <dt>\(\rw{R}\)</dt><dd>the <b>return</b> of a trajectory. For an LLM, the grader's score</dd>
+    <dt>\(\bs{b}\)</dt><dd>the <b>baseline</b> subtracted from it. Last time this became \(V(s)\); this time it will be a group average</dd>
+    <dt>\(g(\tau)\)</dt><dd><b>new.</b> The <b>score function</b> \(\sum_t\nabla_\theta\log\pi_\theta(a_t\mid s_t)\): the direction that makes every action in \(\tau\) more likely. REINFORCE's gradient is just \(\rw{R}\cdot g(\tau)\)</dd>
+    <dt>\(G\)</dt><dd><b>new.</b> The <b>group size</b>: how many trajectories GRPO samples from one start state. \(\bs{\bar R}\) is their mean return</dd>
+    <dt>\(\gp{\sigma},\ \gp{T_i}\)</dt><dd><b>new.</b> The spread of the group's returns, and the length of trajectory \(i\). GRPO divides by both. That is the whole story of reason one</dd>
+    <dt>\(\nabla J\)</dt><dd>the true gradient of the objective. Where we want to point</dd>
+  </dl>
+</aside>
+
+<h2 id="rule"><span class="n">1</span>A baseline has one rule</h2>
+<p class="sub">Last time: subtract any baseline, the gradient stays honest, the noise drops. There was fine print on the word <em>any</em>.</p>
+
+<p>The pivot of the whole last series was a one-line change. Subtract a <span class="w base">baseline</span> from the return before you learn from it, because a return means nothing until you know what to expect. Score 80 on a test. Good or bad? That depends on the class average.</p>
+
+<figure>
+  <div class="panel">
+    <svg id="a1" viewBox="0 0 760 150" role="img" aria-label="A test score of 80 compared with a movable class average"></svg>
+    <p class="read" id="a1r"></p>
+    <div class="ctl"><label>Class average <input type="range" id="a1b" min="40" max="100" step="5" value="60"><output id="a1o">60</output></label></div>
+  </div>
+  <figcaption>Your score is the return \(R\). The class average is the baseline \(b\). Learning is driven by the gap \(R-b\), not by the 80. Drag the average past 80 and the same score flips from praise to blame.</figcaption>
+</figure>
+
+<p>The promise was that subtracting \(\bs{b}\) is free: the <em>expected</em> gradient does not change, only the noise around it. Here is the fine print. Split the update into the part we want and the part we hope is zero:</p>
+
+<div class="math">\[ \E\big[(\rw{R(\tau)}-\bs{b})\,g(\tau)\big] \;=\; \underbrace{\E\big[\rw{R(\tau)}\,g(\tau)\big]}_{=\;\nabla J} \;-\; \underbrace{\E\big[\bs{b}\,g(\tau)\big]}_{\text{the bias}} \]</div>
+
+<p>The first piece is the true gradient. The second is the bias, and "free" means it vanishes. When does it?</p>
+
+<p>It hinges on one fact about the score function: its average over all trajectories is zero.</p>
+
+<div class="math">\[ \begin{aligned}
+\E\big[g(\tau)\big] \;&=\; \sum_\tau p_\theta(\tau)\,\nabla\log p_\theta(\tau) && \color{#788396}{\small \text{write out the expectation}}\\[4pt]
+&=\; \sum_\tau \nabla p_\theta(\tau) && \color{#788396}{\small p\,\nabla\log p = p\cdot\tfrac{\nabla p}{p} = \nabla p}\\[4pt]
+&=\; \nabla\sum_\tau p_\theta(\tau) && \color{#788396}{\small \text{a sum of gradients is the gradient of the sum}}\\[4pt]
+&=\; \nabla 1 \;=\; 0 && \color{#788396}{\small \text{probabilities sum to one}}
+\end{aligned} \]</div>
+
+<p>Now the two cases.</p>
+
+<p>The expectation is over trajectories, and the trajectories are produced by the agent's actions. So any \(\bs{b}\) that does not depend on those actions can be taken outside the expectation: \(\E[\bs{b}\,g(\tau)]=\bs{b}\cdot\E[g(\tau)]=\bs{b}\cdot 0=0\). Free.</p>
+
+<p>If \(\bs{b}\) changes from trajectory to trajectory, it cannot come outside. \(\E[\bs{b}(\tau)\,g(\tau)]\) is a weighted sum of the \(g(\tau)\), and a weighted sum of terms that only cancel when weighted equally need not be zero. Whatever is left over is bias.</p>
+
+<p>Let's make this concrete. Consider an environment with one state and two actions: Left with probability 0.3, Right with 0.7. For a two-way softmax, \(\nabla\log\pi\) comes out to \(+0.7\) for Left and \(-0.3\) for Right, and you can check they already average to zero: \(0.3(0.7)+0.7(-0.3)=0\). Now attach a baseline.</p>
+
+<div class="math">\[ \begin{aligned}
+\bs{b}=5 \text{ for both}: &\quad 0.3\,(5)(+0.7) + 0.7\,(5)(-0.3) \;=\; 0\\[2pt]
+\bs{b}=6 \text{ for Left},\ 3 \text{ for Right}: &\quad 0.3\,(6)(+0.7) + 0.7\,(3)(-0.3) \;=\; +0.63
+\end{aligned} \]</div>
+
+<p>A baseline that depends on which action was taken leaves \(+0.63\) behind. That number is pure bias: it will push Left up forever, regardless of reward.</p>
+
+<p class="rule">A baseline must not know what the agent just did.</p>
+
+<p>The critic \(\bs{V(s_t)}\) of actor-critic and PPO passes. It depends on the state, not on the action chosen there, so the same cancellation works one step at a time. (Why it beats a constant, by centring the weights around zero and cutting variance, is a separate story, not covered here.)</p>
+
+<div class="take leave"><h3>The problem we leave with</h3><p>Any baseline that doesn't peek at the action is free. Now meet an algorithm whose baseline peeks. Twice.</p></div>
+
+<h2 id="grpo"><span class="n">2</span>GRPO breaks it</h2>
+<p class="sub">The group mean is a perfectly good baseline. It's what GRPO multiplies it by that breaks the rule.</p>
+
+<p>Recall the epilogue of the last story. GRPO deletes the critic. From one start state \(s_0\) it samples a group of \(G\) trajectories and uses the group's mean return as the baseline. In LLM terms: the start state is the prompt, a trajectory is a response, an action is a token, the return is the grader's score, and the length \(T_i\) is the token count.</p>
+
+<p>What GRPO is after is the gradient at that one start state. That is an expectation over everything the policy might write, and the group of \(G\) samples is its Monte Carlo estimate:</p>
+
+<div class="math">\[ \begin{aligned}
+\nabla J(s_0) \;&=\; \E_{\tau\sim\pi_\theta(\cdot\mid s_0)}\big[(\rw{R(\tau)}-\bs{b})\,g(\tau)\big] \\[6pt]
+&\approx\; \frac{1}{G}\sum_{i=1}^{G}\big(\rw{R_i}-\bs{b}\big)\,g(\tau_i)
+\end{aligned} \]</div>
+
+<p>So far, textbook. GRPO fills in \(\bs{b}\) with the group mean \(\bs{\bar R}\), then makes two extra divisions. In words, the weight on every action of trajectory \(i\) is:</p>
+
+<p class="wordeq"><span>(<span class="w reward">return</span> − <span class="w base">group mean</span>)</span> <span>÷ <span class="w grpo">spread of the group</span></span> <span>÷ <span class="w grpo">length of this trajectory</span></span></p>
+
+<div class="math">\[ \bs{\bar R} = \frac{1}{G}\sum_{j=1}^{G}\rw{R_j} \qquad\qquad \gp{\sigma} = \sqrt{\tfrac{1}{G}\textstyle\sum_j(\rw{R_j}-\bs{\bar R})^2} \]</div>
+<div class="math">\[ \widehat{\nabla J}_{\text{GRPO}} \;=\; \frac{1}{G}\sum_{i=1}^{G}\frac{\rw{R_i}-\bs{\bar R}}{\gp{\sigma\,T_i}}\;g(\tau_i) \]</div>
+
+<p>(GRPO also wraps this in PPO's clip and a KL penalty. Neither matters here.) Each of the two divisions has a reason to exist. Each breaks the rule in its own way.</p>
+
+<h3>Dividing by length: a baseline that knows how long you talked</h3>
+
+<p>The \(\gp{T_i}\) division averages the loss over tokens, a habit carried over from supervised LLM training. Whatever its motive, look at what it does to the baseline. Everything, \(\bs{\bar R}\) included, is divided by the length of the very trajectory being scored. That is exactly what the rule forbids: the baseline now knows something about what the agent did, namely when it decided to stop.</p>
+
+<p>Does the bias survive the averaging? Be generous: treat \(\bs{\bar R}\) and \(\gp{\sigma}\) as fixed numbers. The baseline term still does not cancel:</p>
+
+<div class="math">\[ \E\Big[\frac{\bs{b}}{\gp{\sigma\,T(\tau)}}\,g(\tau)\Big] \;=\; \frac{\bs{b}}{\gp{\sigma}}\;\nabla_\theta\,\E\Big[\frac{1}{\gp{T(\tau)}}\Big] \;\neq\; 0 \]</div>
+
+<p>In words: the leftover is the gradient of "how short the policy tends to be". It is zero only when every episode has the same length. A response that can stop when it likes does not qualify. Neither does a robot that can fall over.</p>
+
+<p>This is not a hypothetical. <a href="https://arxiv.org/abs/2503.20783">Liu et al. (2025)</a> found that under GRPO, responses grew steadily longer over training, and the wrong ones grew most of all. A length-dependent baseline, left running, learned to be long.</p>
+
+<h3>Dividing by spread: the loudest voices are the easy prompts</h3>
+
+<p>The \(\gp{\sigma}\) division is quieter. Inside one group every trajectory is divided by the same \(\gp{\sigma}\), so within a group it mostly rescales the update rather than tilting it. (Mostly: \(\gp{\sigma}\) is computed from the group, so it contains \(\rw{R_i}\), the return of the trajectory it is dividing. The same thing will turn out to be true of \(\bs{\bar R}\), and we deal with both in the next section.)</p>
+
+<p>The damage is <em>across</em> start states. The real objective averages over them, so every start state's gradient should count equally. GRPO divides each one by its own group's spread:</p>
+
+<div class="math">\[ \begin{aligned}
+\text{GRPO:}\qquad &\E\big[\widehat{\nabla J}_{\text{GRPO}}\big] \;\approx\; \E_{s_0}\Big[\,\frac{1}{\gp{\sigma_{s_0}}}\,\nabla J(s_0)\Big] \\[6pt]
+\text{wanted:}\qquad &\E_{s_0}\big[\nabla J(s_0)\big]
+\end{aligned} \]</div>
+
+<p>Where is \(\gp{\sigma_{s_0}}\) smallest? Where the \(G\) trajectories scored about the same: prompts the policy nearly always solves, or nearly always fails. Those get the loudest updates. Liu et al. call this the question-level difficulty bias. With pass/fail rewards and \(G=8\), a prompt solved once in eight tries is pushed 1.5 times harder than one solved four times in eight. The learner leans towards what it has nearly mastered or nearly given up on, and away from the middle, where the most is left to learn.</p>
+
+<figure>
+  <div class="panel">
+    <svg id="v1" viewBox="0 0 760 270" role="img" aria-label="How much GRPO amplifies a start state's gradient, by how many of eight trajectories passed"></svg>
+  </div>
+  <figcaption>\(k\) of 8 trajectories pass (reward 1) and the rest fail (reward 0), so \(\sigma=\sqrt{f(1-f)}\) with \(f=k/8\). GRPO multiplies that start state's gradient by \(1/\sigma\); each bar shows that factor relative to a start state where 4 of 8 pass. At \(k=0\) or \(k=8\) every return equals the mean, and neither method learns anything.</figcaption>
+</figure>
+
+<div class="take leave"><h3>The problem we leave with</h3><p>Two divisions, two ways the baseline peeks at the trajectory it is judging. The question practically asks itself: what if you just don't divide?</p></div>
+
+<h2 id="dr"><span class="n">3</span>Dr. GRPO: just delete them</h2>
+<p class="sub">Keep \(R_i-\bar R\). Drop \(\sigma\). Drop \(T_i\). That is the entire fix.</p>
+
+<p>That is what <a href="https://arxiv.org/abs/2503.20783">Liu et al.</a> did, and they called it Dr. GRPO: GRPO Done Right.</p>
+
+<div class="math">\[ \widehat{\nabla J}_{\text{Dr}} \;=\; \frac{1}{G}\sum_{i=1}^{G}\big(\rw{R_i}-\bs{\bar R}\big)\,g(\tau_i) \]</div>
+
+<p class="wordeq"><span>weight on every action = <span class="w reward">return</span> − <span class="w base">group mean</span>.</span> <span>Nothing else.</span></p>
+
+<p>Does it pass the rule? Almost, and the "almost" is harmless. The group mean \(\bs{\bar R}\) contains \(\rw{R_i}\) itself, one of its \(G\) ingredients. So a trajectory sits inside its own baseline, and exactly \(1/G\) of the gradient leaks through. But that leak is a <em>constant</em>: the expected update is \(\frac{G-1}{G}\nabla J\), the right direction with a slightly shorter step, and the learning rate absorbs it. GRPO's leftover depended on the trajectory and bent the direction. Dr. GRPO's only shortens the arrow.</p>
+
+<details class="deep">
+  <summary>Where the 1/G comes from, and how to get rid of it <small>· optional, with a figure to click</small></summary>
+  <div class="in">
+  <p>Split the baseline into its \(G\) ingredients. The other \(G-1\) returns are independent of \(\tau_i\) and contribute nothing. One term survives:</p>
+  <div class="math">\[ \E\big[\bs{\bar R}\;g(\tau_i)\big] \;=\; \frac{1}{G}\sum_{j=1}^{G}\E\big[\rw{R_j}\,g(\tau_i)\big] \;=\; \frac{1}{G}\,\E\big[\rw{R_i}\,g(\tau_i)\big] \;=\; \frac{1}{G}\,\nabla J \]</div>
+  <p>To pass exactly, use \(\bs{\bar R_{-i}}\), the mean of the <em>other</em> \(G-1\) returns. It knows nothing about \(\tau_i\), so the bias is zero. And Dr. GRPO's weight is that leave-one-out weight, rescaled:</p>
+  <div class="math">\[ \rw{R_i}-\bs{\bar R} \;=\; \frac{G-1}{G}\,\big(\rw{R_i}-\bs{\bar R_{-i}}\big) \qquad\Longrightarrow\qquad \E\big[\widehat{\nabla J}_{\text{Dr}}\big] \;=\; \frac{G-1}{G}\,\nabla J \]</div>
+  <figure>
+    <div class="panel">
+      <svg id="f4" viewBox="0 0 760 335" role="img" aria-label="Eight returns, their group mean, and the resulting weights with and without leave-one-out"></svg>
+      <p class="read" id="f4r"></p>
+      <div class="ctl">
+        <label>Return of the selected trajectory <input type="range" id="f4s" min="0" max="10" step="0.1" value="8.3"><output id="f4so">8.3</output></label>
+        <label><input type="checkbox" id="f4loo" checked> Show \(R_i - \bar R_{-i}\)</label>
+      </div>
+    </div>
+    <figcaption>Top: eight returns and their group mean \(\bar R\). Bottom: the weights \(R_i-\bar R\). Click a trajectory, then change its return and watch its own baseline move with it. The dashed outlines use the mean of the other seven, which does not move. Every filled bar is exactly 7/8 of its outline.</figcaption>
+  </figure>
+  <p>The paper notes the same equivalence to leave-one-out REINFORCE. Side by side:</p>
+  <div class="tbl"><table>
+  <thead><tr><th></th><th>Weight on \(g(\tau_i)\)</th><th>Baseline term \(\E[b\,g]\)</th><th>Expected update</th></tr></thead>
+  <tbody>
+  <tr><th><span class="w grpo">GRPO</span></th><td>\(\dfrac{R_i-\bar R}{\sigma\,T_i}\)</td><td><span class="chip no">Not zero</span> \(\;\tfrac{b}{\sigma}\,\nabla\E[1/T]\)</td><td>Not a multiple of \(\nabla J\)</td></tr>
+  <tr><th><span class="w dr">Dr. GRPO</span></th><td>\(R_i-\bar R\)</td><td><span class="chip mid">A constant share</span> \(\;\tfrac{1}{G}\nabla J\)</td><td>\(\dfrac{G-1}{G}\,\nabla J\)</td></tr>
+  <tr><th>Leave-one-out</th><td>\(R_i-\bar R_{-i}\)</td><td><span class="chip ok">Zero</span></td><td>\(\nabla J\)</td></tr>
+  </tbody></table></div>
+  </div>
+</details>
+
+<div class="take"><h3>Reason one, solved</h3><p>GRPO divided by the length of the trajectory it was scoring, and the bias did not cancel. Dr. GRPO deletes the divisions and points the right way.</p></div>
+
+<div class="take leave"><h3>The problem we leave with</h3><p>"Points the right way" is a statement about the <em>average</em> update. It says nothing about what each individual action is told. Look at that next.</p></div>
+
+<h2 id="noise"><span class="n">4</span>Not yet prime time for control</h2>
+<p class="sub">Put Dr. GRPO on a walking robot and the fixed algorithm has a problem the fix never touched.</p>
+
+<p>Reset the simulator to \(s_0\), roll out \(G\) trajectories, and update with Dr. GRPO. Read the formula once more, but this time look at the inner sum:</p>
+
+<div class="math">\[ \widehat{\nabla J} \;=\; \frac{1}{G}\sum_{i=1}^{G}\,\big(\rw{R_i}-\bs{\bar R}\big)\,\sum_{t}\nabla_\theta\log\pi_\theta\big(a_{i,t}\mid s_{i,t}\big) \]</div>
+
+<p>One number, \(\rw{R_i}-\bs{\bar R}\), is attached to every action in trajectory \(i\). Step 3 and step 300 get exactly the same feedback. This is Part 1 of the last story all over again: REINFORCE's first problem was that credit is assigned collectively, every action in a good episode gets praised. The critic was invented to fix that. Dr. GRPO deleted the critic, and the problem came back.</p>
+
+<p>Take a robot learning to walk. Most of its actions are small balance corrections while it is upright. Those are good, and each deserves a small positive advantage. Then one bad step trips it. That action deserves a large negative advantage, and the few before it some of the blame. Dr. GRPO cannot say any of this. The episode ended in a fall, its return came in below the group mean, and every action gets the same negative number. The good corrections are punished along with the step that tripped it.</p>
+
+<figure>
+  <div class="panel">
+    <svg id="s1" viewBox="0 0 760 150" role="img" aria-label="A 30-step walking episode shaded by per-step advantage, compared with one value copied to every step"></svg>
+  </div>
+  <figcaption>One 30-step stretch of a walking robot that trips near the end. Top: each step shaded by the advantage it deserves. Bottom: what Dr. GRPO sends back, one value for all 30 steps. The values are illustrative.</figcaption>
+</figure>
+
+<p>Over many episodes this still averages out, which is what section 3 proved. But every action hears about the whole episode and almost nothing about itself, so it takes far more rollouts to learn the same thing.</p>
+
+<div class="take leave"><h3>The problem we leave with</h3><p>Every action learns from the whole episode and nothing about itself. A critic exists to fix exactly this. So how did GRPO ever work?</p></div>
+
+<h2 id="llm"><span class="n">5</span>Why LLMs get away with it</h2>
+<p class="sub">A language model hides the problem. A walking robot does not. Count how often the environment speaks.</p>
+
+<figure>
+  <div class="panel">
+    <svg id="t1" viewBox="0 0 760 330" role="img" aria-label="Turn-taking between agent and environment for a walking robot and for one LLM response"></svg>
+  </div>
+  <figcaption>Top lane of each pair: what the agent does. Bottom lane: what the environment sends back. The robot and its world take turns, a thousand times an episode. The language model writes alone between a prompt and a score.</figcaption>
+</figure>
+
+<p>Dr. GRPO leans on four things. An LLM supplies all four. Most classical RL environments supply none.</p>
+
+<div class="tbl wide"><table>
+<thead><tr><th>It takes for granted</th><th>In LLM training</th><th>In classical RL</th></tr></thead>
+<tbody>
+<tr><th>Reward arrives once, at the end</th><td>A grader scores the finished response.</td><td>A walking robot is paid at every step. One summed return throws the timing away.</td></tr>
+<tr><th>Every step deserves the same feedback</th><td>Tolerable: a pretrained model starts with most of its choices already sensible.</td><td>The step that trips the robot gets the same weight as the 150 good ones before it.</td></tr>
+<tr><th>The environment stays quiet mid-episode</th><td>The next state is the text so far plus one token.</td><td>Physics, noise and opponents answer back at every step.</td></tr>
+<tr><th>The same start state can be replayed \(G\) times</th><td>Send the prompt again.</td><td>Needs a simulator that resets to an exact state. A robot or a live game cannot.</td></tr>
+</tbody></table></div>
+
+<div class="take leave"><h3>The problem we leave with</h3><p>Four assumptions, all true for a prompt and a grader, none true for a robot. If that story is right, the data should show it.</p></div>
+
+<h2 id="evidence"><span class="n">6</span>The evidence</h2>
+<p class="sub">Someone has already run the experiment. The scoreboard says what section 4 said.</p>
+
+<p>De Oliveira et al. (2025) did the first systematic study of GRPO on classical control: <a href="https://arxiv.org/abs/2511.03527">Learning Without Critics? Revisiting GRPO in Classical Reinforcement Learning Environments</a>. Five environments, critic-free methods against PPO.</p>
+
+<figure>
+  <div class="score">
+    <div><b>CartPole</b><span class="chip ok">Critic-free keeps up</span></div>
+    <div><b>Acrobot</b><span class="chip no">PPO ahead</span></div>
+    <div><b>MountainCar<wbr>Continuous</b><span class="chip no">PPO ahead</span></div>
+    <div><b>HalfCheetah</b><span class="chip no">PPO ahead</span></div>
+    <div><b>Humanoid</b><span class="chip no">PPO ahead</span></div>
+  </div>
+  <figcaption>The paper's headline result, as reported: PPO's learned critic beat every critic-free baseline on every environment except CartPole.</figcaption>
+</figure>
+
+<p><strong>The critic wins on long tasks.</strong> PPO beat every critic-free method on Acrobot, MountainCarContinuous, HalfCheetah and Humanoid. In the authors' words, "learned critics remain essential for long-horizon tasks". That is reason two, showing up in the data.</p>
+<p><strong>The exception is the short one.</strong> The paper counts CartPole as short-horizon. With few decisions per episode, a single return says a lot about each action, which is exactly where reason two bites least. (The authors also found PPO over-training on it.)</p>
+<p><strong>Fixing the weights bought little.</strong> GRPO's group-relative weight did no better than simpler critic-free baselines, down to a plain batch mean. On these tasks, how each episode is scaled matters far less than the fact that every action shares one number.</p>
+
+<p>So the bias fix is necessary, not sufficient. Dr. GRPO points the right way. On long control tasks it hears too little about each action to get there quickly.</p>
+
+<h3>What the paper skipped</h3>
+<p>Two things. It tested GRPO with the \(\gp{\sigma}\) division, not Dr. GRPO, though its batch-mean ablation comes close. And it never formed a real group. Its groups are whichever episodes happened to run in parallel, each from its own random start, so \(\rw{R_i}-\bs{\bar R}\) partly measures which start was lucky rather than which actions were good.</p>
+
+<figure>
+  <div class="panel">
+    <svg id="k1" viewBox="0 0 760 320" role="img" aria-label="Eight rollouts shown as running reward totals, from the same start state or from different start states"></svg>
+    <p class="read" id="k1r"></p>
+    <div class="ctl">
+      <div class="seg" id="k1seg"><button data-v="0" aria-pressed="true">Same start state</button><button data-v="1" aria-pressed="false">Different start states</button></div>
+      <button class="go" id="k1run">Sample a new group</button>
+    </div>
+  </div>
+  <figcaption>Each line is one rollout: its running total of reward over 30 steps. The dashed line is the group mean \(\bar R\). Green rollouts ended above it and have all their actions reinforced; red ones ended below. Flip to "different start states" and sample a few times: the spread is now mostly about where each rollout began. A prompt gives an LLM the same-start setting for free. The paper tested the other one, and lists that as a limitation. The rollouts here are simulated for illustration.</figcaption>
+</figure>
+
+<h2 id="recap"><span class="n">7</span>The whole story in one breath</h2>
+
+<ul class="recap">
+<li><b>The rule</b><span>Subtracting a baseline is free only if the baseline doesn't know what the agent just did. The critic \(V(s)\) passes.</span></li>
+<li><b>GRPO</b><span>Group mean as baseline: fine. Then it divides by the trajectory's own length and its group's spread. The length division breaks the rule, and responses drift longer, wrong ones most.</span></li>
+<li><b>Dr. GRPO</b><span>Delete both divisions. The remaining 1/G leak is a constant and only shortens the step. Reason one, solved.</span></li>
+<li><b>Reason two</b><span>Every action in an episode gets the same number. The balance corrections are punished with the stumble. REINFORCE's oldest problem, back because the critic is gone.</span></li>
+<li><b>Why LLMs cope</b><span>One reward at the end, a quiet environment, a replayable start state, and a pretrained policy that is mostly right already. A robot has none of that.</span></li>
+<li><b>The evidence</b><span>On five classical control tasks, PPO's critic beat every critic-free method on all but the shortest one.</span></li>
+</ul>
+
+<p>The pattern from the last story holds. GRPO is PPO minus the critic, plus a cheap stand-in. The stand-in had a bug, and the bug was fixed. But the critic was doing a second job, per-step credit, that no group average can do. On a prompt you can get away without it. On a robot you cannot, yet.</p>
+
+<h3>Next</h3>
+
+<p>The benchmark has a loose end. Its "groups" were a batch of episodes from different random starts, so part of PPO's lead might be down to that, not to the missing critic. There is one clean way to find out: run Dr. GRPO with proper groups, \(G\) rollouts from the same start state, on the same five tasks. If PPO's lead shrinks, the sloppy groups were costing something. If it doesn't, the critic is the whole story.</p>
+
+<p>Stay tuned.</p>
+
+<footer>GRPO: Shao et al., DeepSeekMath (2024). Dr. GRPO: Liu et al., <a href="https://arxiv.org/abs/2503.20783">Understanding R1-Zero-Like Training: A Critical Perspective</a> (2025). Benchmark: De Oliveira et al., <a href="https://arxiv.org/abs/2511.03527">Learning Without Critics? Revisiting GRPO in Classical Reinforcement Learning Environments</a> (arXiv 2511.03527, 2025). The interactive figures compute their numbers in the page.</footer>
+
+</main>
+<script>
+const NS='http://www.w3.org/2000/svg';
+const $=id=>document.getElementById(id);
+const C={ink:'#18212F',ink2:'#465166',ink3:'#788396',line:'#DBE1EA',wash:'#F0F3F8',panel:'#FFFFFF',
+  reward:'#B57A00',base:'#2B6BE0',pos:'#12855D',neg:'#CC3D64',grpo:'#7448D4',dr:'#0B8498'};
+const REDUCE=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function S(tag,attrs,parent,text){const e=document.createElementNS(NS,tag);
+  for(const k in attrs)e.setAttribute(k,attrs[k]);if(text!==undefined)e.textContent=text;if(parent)parent.appendChild(e);return e;}
+function wipe(svg){while(svg.lastChild)svg.removeChild(svg.lastChild);}
+const fmt=(v,d=2)=>(v>=0?'+':'−')+Math.abs(v).toFixed(d);
+function seg(id,cb){const box=$(id);box.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+  box.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));cb(b.dataset.v);}));}
+/* run fn(t in 0..1) over ms; instantly if the reader prefers reduced motion */
+function tween(ms,fn,done){if(REDUCE){fn(1);done&&done();return;}
+  const t0=performance.now();(function f(now){const t=Math.min(1,(now-t0)/ms);fn(t);t<1?requestAnimationFrame(f):(done&&done());})(t0);}
+function rng32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function gauss(r){let u=0;while(u===0)u=r();return Math.sqrt(-2*Math.log(u))*Math.cos(6.283185307*r());}
+
+/* ---------- Figure: a score means nothing without a baseline ---------- */
+(function(){
+  const svg=$('a1'),R=80,X=v=>60+v/100*640,y0=88;
+  function draw(){
+    wipe(svg);const b=+$('a1b').value,w=R-b;$('a1o').textContent=b;
+    S('line',{x1:X(0),y1:y0,x2:X(100),y2:y0,stroke:C.ink3},svg);
+    S('text',{x:X(0)-10,y:y0+4,'text-anchor':'end',class:'num',style:'font-size:12px'},svg,'0');
+    S('text',{x:X(100)+10,y:y0+4,class:'num',style:'font-size:12px'},svg,'100');
+    if(w!==0)S('rect',{x:X(Math.min(R,b)),y:y0-9,width:Math.abs(X(R)-X(b)),height:18,rx:2,fill:w>0?C.pos:C.neg,opacity:.9},svg);
+    S('line',{x1:X(b),y1:y0-13,x2:X(b),y2:y0+30,stroke:C.base,'stroke-width':2,'stroke-dasharray':'6 4'},svg);
+    S('text',{x:X(b),y:y0+47,'text-anchor':b>88?'end':'middle',style:'font-weight:650;fill:'+C.base},svg,'class average b = '+b);
+    S('line',{x1:X(R),y1:y0-44,x2:X(R),y2:y0-10,stroke:C.reward,'stroke-width':1.5},svg);
+    S('circle',{cx:X(R),cy:y0,r:9,fill:C.reward,stroke:'#fff','stroke-width':2},svg);
+    S('text',{x:X(R),y:y0-50,'text-anchor':'middle',style:'font-weight:650;fill:'+C.reward},svg,'your score R = 80');
+    if(w!==0)S('text',{x:X(R)+(w>0?-14:14),y:y0-18,'text-anchor':w>0?'end':'start',class:'num',style:'font-weight:700;font-size:14px;fill:'+(w>0?C.pos:C.neg)},svg,'R − b = '+fmt(w,0));
+    $('a1r').textContent=w>0?'Average '+b+': you beat it by '+w+'. Whatever you did, do more of it.':
+      w<0?'Average '+b+': you fell '+(-w)+' short. Same 80, opposite lesson: do less of that.':
+      'Average 80: exactly as expected. Nothing to learn from this one.';
+  }
+  $('a1b').addEventListener('input',draw);draw();
+})();
+
+/* ---------- Figure: dividing by sigma reweights start states ---------- */
+(function(){
+  const svg=$('v1'),G=8,X0=90,X1=720,Y0=215,H=160,ymax=1.65;
+  const Y=v=>Y0-v/ymax*H,bw=56,step=(X1-X0)/G;
+  S('text',{x:24,y:20,style:'font-weight:650;fill:'+C.grpo},svg,'GRPO’s push on a start state, relative to a 4-of-8 one');
+  S('line',{x1:470,y1:42,x2:500,y2:42,stroke:C.dr,'stroke-width':2,'stroke-dasharray':'7 5'},svg);
+  S('text',{x:508,y:46,style:'font-size:12px;font-weight:650;fill:'+C.dr},svg,'Dr. GRPO: 1× for every start state');
+  [0,.5,1,1.5].forEach(v=>{S('line',{x1:X0-20,y1:Y(v),x2:X1+30,y2:Y(v),stroke:C.line},svg);
+    S('text',{x:X0-28,y:Y(v)+4,'text-anchor':'end',class:'num',style:'font-size:11px'},svg,v+'×');});
+  for(let k=0;k<=G;k++){const cx=X0+k*step,f=k/G;
+    if(k===0||k===G){S('text',{x:cx,y:Y0-10,'text-anchor':'middle',style:'font-size:11px'},svg,'no signal');}
+    else{const v=0.5/Math.sqrt(f*(1-f));
+      S('rect',{x:cx-bw/2,y:Y(v),width:bw,height:Y0-Y(v),rx:3,fill:C.grpo,opacity:k===4?.5:.9},svg);
+      S('text',{x:cx,y:Y(v)-7,'text-anchor':'middle',class:'num',style:'font-size:12.5px;font-weight:650;fill:'+C.grpo},svg,v.toFixed(2)+'×');}
+    S('text',{x:cx,y:Y0+18,'text-anchor':'middle',class:'num',style:'font-size:12px;font-weight:600;fill:'+C.ink},svg,k+'/8');}
+  S('text',{x:(X0+X1)/2,y:Y0+40,'text-anchor':'middle',style:'font-size:12px'},svg,'trajectories in the group that passed');
+  S('line',{x1:X0-20,y1:Y(1),x2:X1+30,y2:Y(1),stroke:C.dr,'stroke-width':2,'stroke-dasharray':'7 5'},svg);
+})();
+
+/* ---------- Figure: a trajectory inside its own baseline ---------- */
+(function(){
+  const svg=$('f4'),r=[6.4,7.6,6.9,8.3,5.6,7.1,7.9,6.2],G=8;let sel=3;
+  function draw(){
+    wipe(svg);const loo=$('f4loo').checked,mean=r.reduce((a,b)=>a+b)/G,yr=130,H=9.5,ya=250;
+    const ext=Math.max(...r.map(v=>Math.abs(v-(mean*G-v)/(G-1)))),sc=Math.min(24,56/ext);
+    S('text',{x:24,y:18,style:'font-weight:650;fill:'+C.reward},svg,'return R');
+    S('text',{x:24,y:175,style:'font-weight:650;fill:'+C.ink},svg,'weight R − R̄');
+    S('line',{x1:60,y1:yr,x2:650,y2:yr,stroke:C.line},svg);S('line',{x1:60,y1:ya,x2:650,y2:ya,stroke:C.ink3},svg);
+    r.forEach((v,i)=>{const x=78+i*72,w=44,a=v-mean,on=i===sel;
+      S('rect',{x,y:yr-Math.max(v*H,2),width:w,height:Math.max(v*H,2),rx:3,fill:C.reward,opacity:on?1:.75,stroke:on?C.ink:'none','stroke-width':2},svg);
+      S('text',{x:x+w/2,y:yr-6,'text-anchor':'middle',class:'num',style:'font-size:12px;font-weight:700;fill:#fff'},svg,v>=1.6?v.toFixed(1):'');
+      if(loo){const al=v-(mean*G-v)/(G-1);
+        S('rect',{x:x-4,y:al>=0?ya-al*sc:ya,width:w+8,height:Math.abs(al)*sc,fill:'none',stroke:C.base,'stroke-width':1.6,'stroke-dasharray':'4 3'},svg);}
+      S('rect',{x,y:a>=0?ya-a*sc:ya,width:w,height:Math.max(Math.abs(a)*sc,1),rx:2,fill:a>=0?C.pos:C.neg},svg);
+      S('text',{x:x+w/2,y:a>=0?ya+17:ya-7,'text-anchor':'middle',class:'num',style:'font-weight:650;fill:'+(a>=0?C.pos:C.neg)},svg,fmt(a,2));
+      S('text',{x:x+w/2,y:yr+17,'text-anchor':'middle',style:'font-size:12px;font-weight:'+(on?700:400)},svg,'τ'+(i+1));
+      const hit=S('rect',{x:x-12,y:25,width:w+24,height:132,fill:'transparent',style:'cursor:pointer',tabindex:0,role:'button','aria-label':'Select trajectory '+(i+1)},svg);
+      const pick=()=>{sel=i;$('f4s').value=r[i];draw();};hit.addEventListener('click',pick);
+      hit.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick();}});});
+    const ym=yr-mean*H;
+    S('line',{x1:60,y1:ym,x2:650,y2:ym,stroke:C.base,'stroke-width':2,'stroke-dasharray':'7 5'},svg);
+    S('text',{x:660,y:ym+5,class:'num',style:'font-weight:650;fill:'+C.base},svg,'R̄ = '+mean.toFixed(2));
+    $('f4so').textContent='τ'+(sel+1)+': '+r[sel].toFixed(1);
+    const others=(mean*G-r[sel])/(G-1);
+    $('f4r').textContent='τ'+(sel+1)+': R = '+r[sel].toFixed(1)+', and its own baseline R̄ = '+mean.toFixed(2)+' moves when R does. Weight = '+fmt(r[sel]-mean,2)+'.'+
+      (loo?' The mean of the other seven stays at '+others.toFixed(2)+', giving the outline '+fmt(r[sel]-others,2)+'. Filled = 7/8 of that.':'');
+  }
+  $('f4loo').addEventListener('change',draw);
+  $('f4s').addEventListener('input',e=>{r[sel]=+e.target.value;draw();});draw();
+})();
+
+/* ---------- Figure: per-step credit versus one number for every step ---------- */
+(function(){
+  const svg=$('s1'),T=30,x0=40,cw=19,gap=3.7,trip=24;
+  const r=rng32(5),adv=[];
+  for(let t=0;t<T;t++)adv.push(t<trip-3?.12+r()*.3:t<trip?-.2-(t-trip+3)*.25:-1.4-(t-trip)*.12);
+  const col=v=>v>=0?C.pos:C.neg,op=v=>Math.min(1,.18+Math.abs(v)/2*.82);
+  S('text',{x:x0,y:18,style:'font-weight:650;fill:'+C.ink},svg,'What each step deserves: its own advantage');
+  S('text',{x:x0,y:92,style:'font-weight:650;fill:'+C.ink},svg,'What Dr. GRPO tells each step: R − R̄');
+  for(let t=0;t<T;t++){const x=x0+t*(cw+gap);
+    S('rect',{x,y:26,width:cw,height:24,rx:3,fill:col(adv[t]),opacity:op(adv[t])},svg);
+    S('rect',{x,y:100,width:cw,height:24,rx:3,fill:C.neg,opacity:.55},svg);}
+  const xs=x0+(trip-3)*(cw+gap),xb=x0+T*(cw+gap)-gap,xg=x0+(trip-3)*(cw+gap)-gap;
+  S('path',{d:`M${x0} 56 v5 H${xg} v-5`,fill:'none',stroke:C.pos},svg);
+  S('text',{x:x0,y:74,style:'font-size:12px;fill:'+C.pos},svg,'upright: small corrections, all good');
+  S('path',{d:`M${xs} 56 v5 H${xb} v-5`,fill:'none',stroke:C.neg},svg);
+  S('text',{x:xb,y:74,'text-anchor':'end',style:'font-size:12px;fill:'+C.neg},svg,'it trips and falls');
+  S('text',{x:x0,y:142,style:'font-size:11px'},svg,'step 1');S('text',{x:xb,y:142,'text-anchor':'end',style:'font-size:11px'},svg,'step 30');
+})();
+
+/* ---------- Figure: who speaks when ---------- */
+(function(){
+  const svg=$('t1');
+  const defs=S('defs',{},svg),mk=S('marker',{id:'t1a',viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:7,markerHeight:7,orient:'auto-start-reverse'},defs);
+  S('path',{d:'M0 0 L10 5 L0 10 z',fill:C.ink3},mk);
+  const agent=(cx,y,w,txt)=>{S('rect',{x:cx-w/2,y:y-13,width:w,height:26,rx:6,fill:C.ink},svg);
+    S('text',{x:cx,y:y+4,'text-anchor':'middle',style:'font-size:12px;font-weight:600;fill:#fff'},svg,txt);};
+  const env=(cx,y,w,txt)=>{S('rect',{x:cx-w/2,y:y-13,width:w,height:26,rx:13,fill:'#fff',stroke:C.reward,'stroke-width':2,'stroke-dasharray':'5 3'},svg);
+    S('text',{x:cx,y:y+4,'text-anchor':'middle',style:'font-size:12px;font-weight:600;fill:'+C.reward},svg,txt);};
+  const arrow=(x1,y1,x2,y2)=>S('line',{x1,y1,x2,y2,stroke:C.ink3,'stroke-width':1.6,'marker-end':'url(#t1a)'},svg);
+  const lanes=(ya,ye,title,note)=>{S('text',{x:24,y:ya-34,style:'font-weight:650;font-size:14px;fill:'+C.ink},svg,title);
+    S('text',{x:24,y:ya+4,style:'font-size:11px;font-weight:600;fill:'+C.ink2},svg,'AGENT');
+    S('text',{x:24,y:ye+4,style:'font-size:11px;font-weight:600;fill:'+C.reward},svg,'WORLD');
+    S('line',{x1:92,y1:(ya+ye)/2,x2:740,y2:(ya+ye)/2,stroke:C.line,'stroke-dasharray':'2 4'},svg);
+    S('text',{x:24,y:ye+38,style:'font-size:12px'},svg,note);};
+  /* robot: strict turn-taking */
+  let ya=62,ye=118;lanes(ya,ye,'A robot learning to walk','The world answers every single action: a new pose and a reward. About 1,000 turns per episode.');
+  const X0=135,dx=92,w=92;
+  for(let k=0;k<7;k++){const cx=X0+k*dx,isEnv=k%2===0,y=isEnv?ye:ya;
+    isEnv?env(cx,y,w,k===0?'start pose':'pose, reward'):agent(cx,y,w,'joint torques');
+    if(k<6){const nx=X0+(k+1)*dx,ny=isEnv?ya:ye;arrow(cx+w/2-14,isEnv?y-13:y+13,nx-w/2+14,isEnv?ny+13:ny-13);}}
+  S('text',{x:X0+6*dx,y:ya+5,'text-anchor':'middle',style:'font-size:13px;font-weight:650;fill:'+C.ink2},svg,'… ×1,000');
+  /* LLM: prompt, a run of tokens, score */
+  ya=232;ye=288;lanes(ya,ye,'One LLM response','The world speaks twice: it asks, and at the very end it grades.');
+  env(130,ye,78,'prompt');
+  const toks=['The','sum','is','12',',','so','x','=','4'],tw=40,tdx=48,T0=210;
+  arrow(130+39-14,ye-13,T0-tw/2,ya+6);
+  toks.forEach((t,k)=>{const cx=T0+k*tdx;agent(cx,ya,tw,t);if(k<toks.length-1)arrow(cx+tw/2,ya,cx+tdx-tw/2,ya);});
+  const last=T0+(toks.length-1)*tdx,sx=last+90;
+  env(sx,ye,72,'score');arrow(last+tw/2-6,ya+13,sx-36+8,ye-13);
+})();
+
+/* ---------- Figure: a group of rollouts ---------- */
+(function(){
+  const svg=$('k1'),G=8,T=30;let mode=0,paths,startPart,seed=7,prog=1,run=0;
+  function sample(){const r=rng32(seed++);paths=[];startPart=[];
+    for(let i=0;i<G;i++){const d=mode?gauss(r)*.35:0;let c=0;const p=[0];
+      for(let t=0;t<T;t++){c+=.5+d+gauss(r)*.6;p.push(c);}paths.push(p);startPart.push(d*T);}}
+  const vr=a=>{const m=a.reduce((x,y)=>x+y)/a.length;return a.reduce((x,y)=>x+(y-m)**2,0)/a.length;};
+  function draw(){
+    wipe(svg);const X0=60,X1=600,Y0=290,Y1=30,R=paths.map(p=>p[T]),mean=R.reduce((a,b)=>a+b)/G;
+    const lo=Math.min(0,...paths.flat()),hi=Math.max(...paths.flat()),Y=v=>Y0-(v-lo)/(hi-lo)*(Y0-Y1),X=t=>X0+t/T*(X1-X0);
+    S('line',{x1:X0,y1:Y0,x2:X1,y2:Y0,stroke:C.ink3},svg);S('line',{x1:X0,y1:Y0,x2:X0,y2:Y1,stroke:C.ink3},svg);
+    S('text',{x:(X0+X1)/2,y:Y0+22,'text-anchor':'middle',style:'font-size:12px'},svg,'step t');
+    S('text',{x:X0-8,y:Y1+4,'text-anchor':'end',style:'font-size:12px'},svg,'total');S('text',{x:X0-8,y:Y1+18,'text-anchor':'end',style:'font-size:12px'},svg,'reward');
+    S('circle',{cx:X0,cy:Y(0),r:6,fill:C.ink},svg);S('text',{x:X0+10,y:Y(0)+18,style:'font-size:12px;font-weight:600;fill:'+C.ink},svg,mode?'starts differ in difficulty':'s₀');
+    const n=Math.max(1,Math.round(prog*T));
+    paths.forEach((p,i)=>{const col=R[i]>=mean?C.pos:C.neg;
+      S('polyline',{points:p.slice(0,n+1).map((v,t)=>X(t).toFixed(1)+','+Y(v).toFixed(1)).join(' '),fill:'none',stroke:prog<1?C.ink3:col,'stroke-width':1.8,opacity:.85},svg);
+      if(prog>=1)S('circle',{cx:X1,cy:Y(p[T]),r:4.5,fill:col},svg);});
+    if(prog>=1){const L=R.map((v,i)=>({v,y:Y(v)})).sort((a,b)=>a.y-b.y);
+      for(let i=1;i<L.length;i++)if(L[i].y-L[i-1].y<13)L[i].y=L[i-1].y+13;
+      L.forEach(l=>S('text',{x:X1+12,y:l.y+4,class:'num',style:'font-size:11px;paint-order:stroke;stroke:#fff;stroke-width:3px;fill:'+(l.v>=mean?C.pos:C.neg)},svg,fmt(l.v-mean,1)));}
+    if(prog>=1){S('line',{x1:X1-40,y1:Y(mean),x2:X1+95,y2:Y(mean),stroke:C.base,'stroke-width':2,'stroke-dasharray':'6 4'},svg);
+      S('text',{x:X1+100,y:Y(mean)+4,style:'font-weight:650;fill:'+C.base},svg,'R̄');
+      S('text',{x:X1+12,y:Y1-18,style:'font-size:12px;font-weight:600;fill:'+C.ink},svg,'R − R̄');
+      const vs=vr(startPart),vt=vr(R.map((v,i)=>v-startPart[i]));
+      $('k1r').textContent=mode?'The rollouts began in different states. In this simulated sample about '+Math.round(100*vs/(vs+vt))+'% of the spread in returns comes from which start was drawn, not from the actions taken. R̄ no longer estimates the value of any one start state. This is the grouping the paper tested.':
+        'All eight rollouts began in the same state s₀, so R̄ = '+mean.toFixed(1)+' estimates V(s₀), and every difference in return comes from what happened after the start. This is what a prompt gives an LLM.';}
+  }
+  function go(){const id=++run;sample();tween(1300,t=>{if(id!==run)return;prog=t;draw();});}
+  seg('k1seg',v=>{mode=+v;go();});$('k1run').addEventListener('click',go);sample();draw();
+})();
+</script>
+</body>
+</html>
